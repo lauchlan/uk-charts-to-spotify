@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK Charts to Spotify Playlist Creator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0;
+            padding: 10px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid #e9ecef;
+            height: 30px;
+            max-height: 30px;
+        }
+
+        .app-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f8f9fa;
+            padding: 3px 8px;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+            position: relative;
+            cursor: pointer;
+            height: 24px;
+        }
+
+        .user-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .user-details {
+            display: flex;
+            align-items: center;
+        }
+
+        .user-name {
+            font-size: 12px;
+            font-weight: 600;
+            margin: 0;
+            color: #333;
+            line-height: 1;
+        }
+
+        .dropdown-arrow {
+            font-size: 10px;
+            opacity: 0.7;
+            transition: transform 0.2s ease;
+        }
+
+        .user-info.open .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .user-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 8px 0;
+            min-width: 150px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .user-dropdown.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            color: #333;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+        }
+
+        .dropdown-item.logout {
+            color: #dc3545;
+        }
+
+        .dropdown-item.logout:hover {
+            background: #f8d7da;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            margin-bottom: 10px;
+        }
+
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .info-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .info-icon {
+            width: 16px;
+            height: 16px;
+            opacity: 0.7;
+        }
+
+        .playlist-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #1db954;
+        }
+
+        .playlist-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .playlist-details {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .playlist-view-btn {
+            padding: 4px 8px;
+            font-size: 11px;
+            background: #1db954;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.2s ease;
+        }
+
+        .playlist-view-btn:hover {
+            background: #1ed760;
+        }
+
+        .auth-section {
+            text-align: center;
+        }
+
+        .auth-section h2 {
+            margin-bottom: 10px;
+            color: #1db954;
+            font-size: 1.5rem;
+        }
+
+        .btn {
+            background: #1db954;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-small {
+            padding: 4px 12px;
+            font-size: 12px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+
+        .btn:hover {
+            background: #1ed760;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .single-row-form {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-group label {
+            display: inline;
+            margin-bottom: 0;
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 4px 8px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 13px;
+            min-width: 80px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #1db954;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        .checkbox-group label {
+            font-size: 12px;
+            margin: 0;
+        }
+
+        .user-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-info .user-details {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+
+        .user-info .user-text h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .user-info .user-text p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1db954;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .playlist-result {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .playlist-result.show {
+            display: block;
+        }
+
+        .playlist-result h3 {
+            color: #1db954;
+            margin-bottom: 15px;
+        }
+
+        .playlist-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .stat .number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1db954;
+        }
+
+        .stat .label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .playlist-link {
+            display: inline-block;
+            background: #1db954;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .playlist-link:hover {
+            background: #1ed760;
+            transform: translateY(-2px);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .step {
+            margin-bottom: 30px;
+        }
+
+        .chart-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .chart-info h3 {
+            color: #1db954;
+            margin-bottom: 15px;
+        }
+
+        .chart-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+
+        .chart-preview {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .chart-preview h4 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .chart-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            background: white;
+        }
+
+        .chart-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-bottom: 1px solid #f1f3f4;
+            transition: background-color 0.2s ease;
+            min-height: 50px;
+        }
+
+        .chart-item:last-child {
+            border-bottom: none;
+        }
+
+        .chart-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .chart-position {
+            font-weight: bold;
+            color: #1db954;
+            min-width: 25px;
+            margin-right: 12px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .chart-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .chart-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 2px;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chart-artist {
+            color: #666;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .spotify-match {
+            flex: 1;
+            margin-left: 15px;
+            padding: 6px 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 2px solid #1db954;
+            min-width: 0;
+        }
+
+
+        .spotify-preview {
+            margin-top: 4px;
+        }
+
+        .spotify-embed-container {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .spotify-embed-container iframe {
+            border-radius: 8px;
+            border: none;
+        }
+
+
+        .spotify-no-match {
+            flex: 1;
+            margin-left: 15px;
+            padding: 6px 8px;
+            background: #fff3cd;
+            border-radius: 4px;
+            border-left: 2px solid #ffc107;
+            text-align: center;
+        }
+
+        .no-match-text {
+            color: #856404;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .error-text {
+            color: #721c24;
+            font-size: 0.8em;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .spotify-loading {
+            flex: 1;
+            margin-left: 15px;
+            padding: 6px 8px;
+            background: #e3f2fd;
+            border-radius: 4px;
+            border-left: 2px solid #2196f3;
+            text-align: center;
+        }
+
+        .loading-text {
+            color: #1976d2;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .playlist-creation {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .existing-playlists {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .existing-playlists h4 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .playlist-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .playlist-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .playlist-item:hover {
+            border-color: #1db954;
+            background: #f8f9fa;
+        }
+
+        .playlist-item.selected {
+            border-color: #1db954;
+            background: #e8f5e8;
+        }
+
+        .playlist-info h5 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+
+        .playlist-info p {
+            margin: 0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .chart-header h4 {
+            margin: 0;
+        }
+
+        .selection-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .selected-count {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+
+        .update-options {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .update-options .checkbox-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .auth-notice {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .auth-notice h4 {
+            color: #856404;
+            margin: 0 0 10px 0;
+        }
+
+        .auth-notice p {
+            color: #856404;
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+
+            .user-info {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .playlist-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .chart-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .playlist-creation {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .playlist-creation .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- Alert Messages -->
+        <div id="alert" class="alert"></div>
+
+        <!-- Authentication Section -->
+        <div id="authSection" class="card auth-section">
+            <h2>Connect to Spotify</h2>
+            <p>Log in to your Spotify account to create playlists</p>
+            <button id="loginBtn" class="btn">Login with Spotify</button>
+        </div>
+
+        <!-- Main App Section -->
+        <div id="appSection" class="card hidden">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="app-title">🎵 UK Charts to Spotify</div>
+                <div id="userInfo" class="user-info" style="display: none;">
+                    <img id="userAvatar" class="user-avatar" src="" alt="User Avatar">
+                    <div class="user-details">
+                        <div id="userName" class="user-name"></div>
+                    </div>
+                    <span class="dropdown-arrow">▼</span>
+                    <div class="user-dropdown">
+                        <a href="#" class="dropdown-item logout" id="logoutBtn">
+                            <span>🚪</span>
+                            Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 1: Chart Selection -->
+            <div id="step1" class="step">
+                <h2>Step 1: Select Chart Year</h2>
+                <form id="chartForm">
+                    <div class="single-row-form">
+                        <div class="form-group">
+                            <label for="year">Year:</label>
+                            <select id="year" name="year" required>
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="playlistName">Name:</label>
+                            <input type="text" id="playlistName" name="playlistName" placeholder="Auto-generated">
+                        </div>
+                        
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="isPublic" name="isPublic">
+                            <label for="isPublic">Public</label>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" id="loadChartBtn" class="btn btn-small">Load</button>
+                            <button type="button" id="forceRefreshBtn" class="btn btn-secondary btn-small">Refresh</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Step 2: Chart Preview -->
+            <div id="step2" class="step hidden">
+                <!-- Compact Info Bar -->
+                <div class="info-bar">
+                    <div class="info-section">
+                        <span class="info-label">Chart:</span>
+                        <span id="chartTitle" class="info-value">UK Top 100 - 2024</span>
+                    </div>
+                    <div class="info-section">
+                        <span class="info-label">Tracks:</span>
+                        <span id="totalTracks" class="info-value">100</span>
+                    </div>
+                    <div class="info-section">
+                        <span class="info-label">Year:</span>
+                        <span id="chartYear" class="info-value">2024</span>
+                    </div>
+                    <div class="info-section">
+                        <span class="info-icon">📦</span>
+                        <span id="cacheStatus" class="info-label">Cached</span>
+                    </div>
+                    <div id="playlistInfo" class="playlist-info" style="display: none;">
+                        <span class="playlist-name" id="playlistName"></span>
+                        <span class="playlist-details" id="playlistDetails"></span>
+                        <a id="playlistViewBtn" class="playlist-view-btn" href="#" target="_blank">View</a>
+                    </div>
+                </div>
+
+                <!-- Existing Playlists (Hidden by default, shown when needed) -->
+                <div id="existingPlaylists" class="existing-playlists hidden">
+                    <div id="playlistList" class="playlist-list">
+                        <!-- Existing playlists will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Authentication Notice -->
+                <div id="authNotice" class="auth-notice hidden">
+                    <div class="notice-content">
+                        <h4>🔐 Login Required for Playlist Management</h4>
+                        <p>To check for existing playlists and update them, you need to log in to Spotify first.</p>
+                        <p>You can still view and select tracks without logging in, but you'll need to authenticate to create or update playlists.</p>
+                    </div>
+                </div>
+
+                <!-- Chart Preview with Selection -->
+                <div id="chartPreview" class="chart-preview">
+                    <div class="chart-header">
+                        <h4>Select Tracks to Add</h4>
+                        <div class="selection-controls">
+                            <button id="selectAllBtn" class="btn btn-small">Select All</button>
+                            <button id="selectNoneBtn" class="btn btn-small btn-secondary">Select None</button>
+                            <span id="selectedCount" class="selected-count">0 tracks selected</span>
+                        </div>
+                    </div>
+                    <div id="chartList" class="chart-list">
+                        <!-- Chart items will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Playlist Creation/Update -->
+                <div class="playlist-creation">
+                    <div id="createNewSection">
+                        <button id="createPlaylistBtn" class="btn">Create New Playlist</button>
+                    </div>
+                    <div id="updateExistingSection" class="hidden">
+                        <button id="updatePlaylistBtn" class="btn">Update Selected Playlist</button>
+                        <div class="update-options">
+                            <label class="checkbox-group">
+                                <input type="checkbox" id="replaceAllTracks">
+                                <span>Replace all tracks (clear playlist first)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button id="backToStep1Btn" class="btn btn-secondary">Back to Step 1</button>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p id="loadingText">Creating your playlist...</p>
+            </div>
+
+            <!-- Playlist Result -->
+            <div id="playlistResult" class="playlist-result">
+                <h3>🎉 Playlist Created Successfully!</h3>
+                <div class="playlist-stats">
+                    <div class="stat">
+                        <div class="number" id="tracksFound">0</div>
+                        <div class="label">Tracks Found</div>
+                    </div>
+                    <div class="stat">
+                        <div class="number" id="tracksSearched">0</div>
+                        <div class="label">Tracks Searched</div>
+                    </div>
+                    <div class="stat">
+                        <div class="number" id="playlistYear">-</div>
+                        <div class="label">Year</div>
+                    </div>
+                </div>
+                <a id="playlistLink" href="#" target="_blank" class="playlist-link">Open in Spotify</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class UKChartsApp {
+            constructor() {
+                this.isAuthenticated = false;
+                this.user = null;
+                this.currentChartData = null;
+                this.init();
+            }
+
+            async init() {
+                this.setupEventListeners();
+                await this.checkAuthentication();
+                await this.loadYears();
+                this.handleURLParams();
+            }
+
+            setupEventListeners() {
+                document.getElementById('loginBtn').addEventListener('click', () => this.login());
+                document.getElementById('logoutBtn').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.logout();
+                });
+                document.getElementById('chartForm').addEventListener('submit', (e) => this.loadChartData(e));
+                document.getElementById('forceRefreshBtn').addEventListener('click', () => this.forceRefreshChart());
+                document.getElementById('createPlaylistBtn').addEventListener('click', () => this.createPlaylist());
+                document.getElementById('updatePlaylistBtn').addEventListener('click', () => this.updatePlaylist());
+                document.getElementById('backToStep1Btn').addEventListener('click', () => this.backToStep1());
+                document.getElementById('selectAllBtn').addEventListener('click', () => this.selectAllTracks());
+                document.getElementById('selectNoneBtn').addEventListener('click', () => this.selectNoTracks());
+                document.getElementById('year').addEventListener('change', () => this.updatePlaylistName());
+                
+                // User dropdown functionality
+                const userInfo = document.getElementById('userInfo');
+                userInfo.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleUserDropdown();
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', () => {
+                    this.closeUserDropdown();
+                });
+            }
+
+            async checkAuthentication() {
+                try {
+                    const response = await fetch('/api/user');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.isAuthenticated = true;
+                        this.user = data.user;
+                        this.showApp();
+                    } else {
+                        this.showAuth();
+                    }
+                } catch (error) {
+                    console.error('Auth check failed:', error);
+                    this.showAuth();
+                }
+            }
+
+            async loadYears() {
+                try {
+                    const response = await fetch('/api/years');
+                    if (response.ok) {
+                        const data = await response.json();
+                        const yearSelect = document.getElementById('year');
+                        yearSelect.innerHTML = '<option value="">Select a year...</option>';
+                        
+                        data.years.forEach(year => {
+                            const option = document.createElement('option');
+                            option.value = year;
+                            option.textContent = year;
+                            yearSelect.appendChild(option);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to load years:', error);
+                    this.showAlert('Failed to load available years', 'error');
+                }
+            }
+
+            login() {
+                window.location.href = '/api/auth/spotify';
+            }
+
+            async logout() {
+                try {
+                    await fetch('/api/logout', { method: 'POST' });
+                    this.isAuthenticated = false;
+                    this.user = null;
+                    this.showAuth();
+                    this.showAlert('Logged out successfully', 'success');
+                } catch (error) {
+                    console.error('Logout failed:', error);
+                    this.showAlert('Logout failed', 'error');
+                }
+            }
+
+            showAuth() {
+                document.getElementById('authSection').classList.remove('hidden');
+                document.getElementById('appSection').classList.add('hidden');
+            }
+
+            showApp() {
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('appSection').classList.remove('hidden');
+                this.updateUserInfo();
+            }
+
+            updateUserInfo() {
+                if (this.user) {
+                    document.getElementById('userName').textContent = this.user.display_name || this.user.id;
+                    
+                    const avatar = document.getElementById('userAvatar');
+                    if (this.user.images && this.user.images.length > 0) {
+                        avatar.src = this.user.images[0].url;
+                        avatar.alt = this.user.display_name || this.user.id;
+                    } else {
+                        avatar.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTIiIGZpbGw9IiMxZGI5NTQiLz4KPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj4/PC90ZXh0Pgo8L3N2Zz4K';
+                        avatar.alt = this.user.display_name || this.user.id;
+                    }
+                    
+                    // Show user info in top bar
+                    document.getElementById('userInfo').style.display = 'flex';
+                }
+            }
+
+            toggleUserDropdown() {
+                const userInfo = document.getElementById('userInfo');
+                const dropdown = userInfo.querySelector('.user-dropdown');
+                
+                if (dropdown.classList.contains('show')) {
+                    this.closeUserDropdown();
+                } else {
+                    this.openUserDropdown();
+                }
+            }
+
+            openUserDropdown() {
+                const userInfo = document.getElementById('userInfo');
+                const dropdown = userInfo.querySelector('.user-dropdown');
+                
+                userInfo.classList.add('open');
+                dropdown.classList.add('show');
+            }
+
+            closeUserDropdown() {
+                const userInfo = document.getElementById('userInfo');
+                const dropdown = userInfo.querySelector('.user-dropdown');
+                
+                userInfo.classList.remove('open');
+                dropdown.classList.remove('show');
+            }
+
+            updatePlaylistName() {
+                const year = document.getElementById('year').value;
+                const playlistName = document.getElementById('playlistName');
+                
+                if (year && !playlistName.value) {
+                    playlistName.placeholder = `UK Top 100 - ${year}`;
+                }
+            }
+
+            async loadChartData(event, forceRefresh = false) {
+                if (event) event.preventDefault();
+                
+                const year = document.getElementById('year').value;
+                
+                if (!year) {
+                    this.showAlert('Please select a year', 'error');
+                    return;
+                }
+
+                // Check cache first (unless force refresh)
+                if (!forceRefresh) {
+                    const cachedData = this.getCachedChartData(year);
+                    if (cachedData) {
+                        console.log(`📦 Using cached data for ${year}`);
+                        this.selectedYear = year; // Set selected year for caching
+                        this.showLoading(true, 'Loading cached chart data...');
+                        this.hidePlaylistResult();
+                        
+                        try {
+                            // Check for existing playlists (only if authenticated)
+                            this.showLoading(true, 'Checking for existing playlists...');
+                            const playlistResponse = await fetch(`/api/check-playlist/${year}`);
+                            const playlistData = await playlistResponse.json();
+
+                            if (playlistResponse.ok) {
+                                this.currentChartData = cachedData;
+                                this.currentExistingPlaylists = playlistData.existingPlaylists || [];
+                                this.showChartPreview(cachedData, year, playlistData.hasExisting, true, playlistData.authenticated);
+                                this.showStep2();
+                                this.showAlert(`Loaded ${cachedData.tracksFound} tracks from ${year} chart (cached)`, 'success');
+                            } else {
+                                this.showAlert(playlistData.error || 'Failed to check existing playlists', 'error');
+                            }
+                        } catch (error) {
+                            console.error('Load cached chart error:', error);
+                            this.showAlert('Error loading cached data. Please try again.', 'error');
+                        } finally {
+                            this.showLoading(false);
+                        }
+                        return;
+                    }
+                }
+
+                this.showLoading(true, forceRefresh ? 'Refreshing chart data...' : 'Loading chart data...');
+                this.hidePlaylistResult();
+
+                try {
+                    // Load chart data from server
+                    const chartResponse = await fetch(`/api/test-chart/${year}`);
+                    const chartData = await chartResponse.json();
+
+                    if (!chartResponse.ok) {
+                        this.showAlert(chartData.error || 'Failed to load chart data', 'error');
+                        return;
+                    }
+
+                    // Cache the data if we got 100 tracks
+                    if (chartData.tracksFound === 100) {
+                        this.cacheChartData(year, chartData);
+                        console.log(`💾 Cached data for ${year}`);
+                    }
+
+                    // Check for existing playlists (only if authenticated)
+                    this.showLoading(true, 'Checking for existing playlists...');
+                    const playlistResponse = await fetch(`/api/check-playlist/${year}`);
+                    const playlistData = await playlistResponse.json();
+
+                    if (playlistResponse.ok) {
+                this.currentChartData = chartData;
+                this.currentExistingPlaylists = playlistData.existingPlaylists || [];
+                this.selectedYear = year; // Set selected year for caching
+                this.showChartPreview(chartData, year, playlistData.hasExisting, false, playlistData.authenticated);
+                this.showStep2();
+                        this.showAlert(`Loaded ${chartData.tracksFound} tracks from ${year} chart${forceRefresh ? ' (refreshed)' : ''}`, 'success');
+                    } else {
+                        this.showAlert(playlistData.error || 'Failed to check existing playlists', 'error');
+                    }
+                } catch (error) {
+                    console.error('Load chart error:', error);
+                    this.showAlert('Network error. Please try again.', 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            async forceRefreshChart() {
+                const year = document.getElementById('year').value;
+                if (!year) {
+                    this.showAlert('Please select a year first', 'error');
+                    return;
+                }
+                
+                // Clear cache for this year (both chart data and Spotify matches)
+                this.clearCachedChartData(year);
+                const spotifyCacheKey = `spotify_matches_${year}`;
+                localStorage.removeItem(spotifyCacheKey);
+                console.log(`🗑️ Cleared all caches for ${year}`);
+                
+                // Set force refresh flag
+                this.forceRefresh = true;
+                
+                // Load fresh data
+                await this.loadChartData(null, true);
+                
+                // Reset force refresh flag
+                this.forceRefresh = false;
+            }
+
+            showChartPreview(data, year, hasExistingPlaylists = false, isCached = false, isAuthenticated = false) {
+                // Update chart info in compact info bar
+                document.getElementById('chartTitle').textContent = `UK Top 100 - ${year}`;
+                document.getElementById('totalTracks').textContent = data.tracksFound;
+                document.getElementById('chartYear').textContent = year;
+                
+                // Show/hide cache status
+                const cacheStatus = document.getElementById('cacheStatus');
+                if (isCached) {
+                    cacheStatus.style.display = 'inline';
+                } else {
+                    cacheStatus.style.display = 'none';
+                }
+                
+                // Show/hide playlist info in compact bar
+                const playlistInfo = document.getElementById('playlistInfo');
+                if (hasExistingPlaylists && this.currentExistingPlaylists.length > 0) {
+                    const playlist = this.currentExistingPlaylists[0]; // Show first playlist
+                    document.getElementById('playlistName').textContent = playlist.name;
+                    document.getElementById('playlistDetails').textContent = `${playlist.tracks?.total || 0} tracks • ${playlist.owner?.display_name || 'Unknown'}`;
+                    document.getElementById('playlistViewBtn').href = playlist.external_urls?.spotify || '#';
+                    playlistInfo.style.display = 'flex';
+                } else {
+                    playlistInfo.style.display = 'none';
+                }
+
+                // Hide the existing playlists section since we show info in compact bar
+                const existingPlaylistsDiv = document.getElementById('existingPlaylists');
+                const authNotice = document.getElementById('authNotice');
+                const createNewSection = document.getElementById('createNewSection');
+                const updateExistingSection = document.getElementById('updateExistingSection');
+
+                // Always hide the existing playlists section - we show info in compact bar instead
+                existingPlaylistsDiv.classList.add('hidden');
+
+                if (isAuthenticated) {
+                    if (hasExistingPlaylists && this.currentExistingPlaylists.length > 0) {
+                        // User is authenticated and has existing playlists
+                        authNotice.classList.add('hidden');
+                        createNewSection.classList.remove('hidden');
+                        updateExistingSection.classList.remove('hidden');
+                    } else {
+                        // User is authenticated but no existing playlists found
+                        authNotice.classList.add('hidden');
+                        createNewSection.classList.remove('hidden');
+                        updateExistingSection.classList.add('hidden');
+                    }
+                } else {
+                    // User is not authenticated
+                    authNotice.classList.remove('hidden');
+                    createNewSection.classList.add('hidden');
+                    updateExistingSection.classList.add('hidden');
+                }
+
+                // Show all tracks with checkboxes
+                this.showAllTracks(data.tracks);
+            }
+
+            showExistingPlaylists() {
+                const playlistList = document.getElementById('playlistList');
+                playlistList.innerHTML = '';
+
+                this.currentExistingPlaylists.forEach(playlist => {
+                    const playlistElement = document.createElement('div');
+                    playlistElement.className = 'playlist-item';
+                    playlistElement.dataset.playlistId = playlist.id;
+                    playlistElement.innerHTML = `
+                        <div class="playlist-info">
+                            <h5>${playlist.name}</h5>
+                            <p>${playlist.tracks?.total || 0} tracks • ${playlist.owner?.display_name || 'Unknown'}</p>
+                        </div>
+                        <div class="playlist-actions">
+                            <a href="${playlist.external_urls?.spotify}" target="_blank" class="btn btn-small">View on Spotify</a>
+                        </div>
+                    `;
+                    
+                    playlistElement.addEventListener('click', (e) => {
+                        if (e.target.tagName !== 'A') {
+                            this.selectPlaylist(playlist.id);
+                        }
+                    });
+                    
+                    playlistList.appendChild(playlistElement);
+                });
+            }
+
+            selectPlaylist(playlistId) {
+                // Remove selection from all playlists
+                document.querySelectorAll('.playlist-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                
+                // Select the clicked playlist
+                const selectedPlaylist = document.querySelector(`[data-playlist-id="${playlistId}"]`);
+                if (selectedPlaylist) {
+                    selectedPlaylist.classList.add('selected');
+                    this.selectedPlaylistId = playlistId;
+                }
+            }
+
+            async showAllTracks(tracks) {
+                const chartList = document.getElementById('chartList');
+                chartList.innerHTML = '';
+
+                // Show tracks immediately without Spotify matches
+                this.showTracksWithoutMatches(tracks);
+
+                // Start loading Spotify matches asynchronously
+                this.loadSpotifyMatchesAsync(tracks);
+            }
+
+            async loadSpotifyMatchesAsync(tracks) {
+                try {
+                    console.log('🎵 Starting async Spotify matching...');
+                    console.log('📤 Processing', tracks.length, 'tracks in batches of 10');
+                    
+                    // Check for cached Spotify matches first
+                    const year = this.selectedYear;
+                    const cacheKey = `spotify_matches_${year}`;
+                    const cachedMatches = localStorage.getItem(cacheKey);
+                    
+                    if (cachedMatches && !this.forceRefresh) {
+                        console.log('📦 Using cached Spotify matches for', year);
+                        const matches = JSON.parse(cachedMatches);
+                        this.updateTracksWithMatches(matches);
+                        return;
+                    }
+                    
+                    if (this.forceRefresh) {
+                        console.log('🔄 Force refresh: clearing Spotify match cache for', year);
+                        localStorage.removeItem(cacheKey);
+                    }
+                    
+                    // Safely encode tracks data to prevent JSON parsing issues
+                    const safeTracks = tracks.map(track => ({
+                        position: track.position,
+                        title: track.title,
+                        artist: track.artist,
+                        searchQuery: track.searchQuery
+                    }));
+                    
+                    console.log('🔒 Safely encoded tracks data');
+                    
+                    // Process tracks in batches of 10, with 3 batches running in parallel
+                    const batchSize = 10;
+                    const parallelBatches = 3;
+                    const totalBatches = Math.ceil(safeTracks.length / batchSize);
+                    let allMatches = [];
+                    
+                    // Create all batches first
+                    const batches = [];
+                    for (let i = 0; i < safeTracks.length; i += batchSize) {
+                        batches.push(safeTracks.slice(i, i + batchSize));
+                    }
+                    
+                    // Process batches in parallel groups
+                    for (let i = 0; i < batches.length; i += parallelBatches) {
+                        const currentBatches = batches.slice(i, i + parallelBatches);
+                        const groupNumber = Math.floor(i / parallelBatches) + 1;
+                        const totalGroups = Math.ceil(batches.length / parallelBatches);
+                        
+                        console.log(`🚀 Processing parallel group ${groupNumber}/${totalGroups} (${currentBatches.length} batches)`);
+                        
+                        // Create promises for all batches in this parallel group
+                        const batchPromises = currentBatches.map(async (batch, batchIndex) => {
+                            const actualBatchNumber = i + batchIndex + 1;
+                            console.log(`🎵 Processing batch ${actualBatchNumber}/${totalBatches} (${batch.length} tracks)`);
+                            
+                            try {
+                                // Test JSON stringification for this batch
+                                const testJson = JSON.stringify({ tracks: batch });
+                                console.log(`✅ Batch ${actualBatchNumber} JSON stringification successful, length:`, testJson.length);
+                                
+                                // Fetch Spotify matches for this batch
+                                const response = await fetch('/api/match-tracks', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: testJson
+                                });
+
+                                console.log(`📡 Batch ${actualBatchNumber} response received, status:`, response.status, response.statusText);
+                                
+                                if (!response.ok) {
+                                    console.error(`❌ Batch ${actualBatchNumber} HTTP error:`, response.status, response.statusText);
+                                    const errorText = await response.text();
+                                    console.error(`❌ Batch ${actualBatchNumber} error response body:`, errorText);
+                                    return null; // Return null for failed batches
+                                }
+
+                                const matchData = await response.json();
+                                console.log(`📊 Batch ${actualBatchNumber} match data received:`, matchData);
+
+                                if (matchData.success && matchData.matches) {
+                                    console.log(`✅ Batch ${actualBatchNumber} loaded ${matchData.matches.length} matches`);
+                                    return matchData.matches;
+                                } else {
+                                    console.warn(`⚠️ Batch ${actualBatchNumber} failed:`, matchData.error);
+                                    return null;
+                                }
+                                
+                            } catch (batchError) {
+                                console.error(`❌ Batch ${actualBatchNumber} error:`, batchError);
+                                return null; // Return null for failed batches
+                            }
+                        });
+                        
+                        // Wait for all batches in this parallel group to complete
+                        const batchResults = await Promise.all(batchPromises);
+                        
+                        // Process results and update UI
+                        batchResults.forEach(matches => {
+                            if (matches) {
+                                allMatches = allMatches.concat(matches);
+                                // Update the display with matches from this batch
+                                this.updateTracksWithMatches(matches);
+                            }
+                        });
+                        
+                        // Add delay between parallel groups to avoid overwhelming the server
+                        if (i + parallelBatches < batches.length) {
+                            console.log('⏳ Waiting 300ms before next parallel group...');
+                            await new Promise(resolve => setTimeout(resolve, 300));
+                        }
+                    }
+                    
+                    console.log(`🎉 Completed all batches! Total matches: ${allMatches.length}/${tracks.length}`);
+                    
+                    // Cache the Spotify matches for this year
+                    if (allMatches.length > 0) {
+                        const year = this.selectedYear;
+                        const cacheKey = `spotify_matches_${year}`;
+                        localStorage.setItem(cacheKey, JSON.stringify(allMatches));
+                        console.log(`💾 Cached ${allMatches.length} Spotify matches for ${year}`);
+                    }
+
+                } catch (error) {
+                    console.error('❌ Error in batch processing:', error);
+                    console.error('❌ Error details:', error.message, error.stack);
+                    this.showAlert('Failed to load Spotify matches: ' + error.message, 'error');
+                }
+            }
+
+            showTracksWithMatches(matches) {
+                const chartList = document.getElementById('chartList');
+                chartList.innerHTML = '';
+
+                matches.forEach(match => {
+                    const trackElement = document.createElement('div');
+                    trackElement.className = 'chart-item';
+                    
+                    let spotifyInfo = '';
+                    if (match.hasMatch && match.spotifyMatch) {
+                        const spotify = match.spotifyMatch;
+                        spotifyInfo = `
+                            <div class="spotify-match">
+                                <div class="spotify-title">${spotify.name}</div>
+                                <div class="spotify-artist">${spotify.artists.map(a => a.name).join(', ')}</div>
+                                <div class="spotify-album">${spotify.album.name}</div>
+                                <div class="spotify-preview">
+                                    ${spotify.preview_url ? 
+                                        `<audio controls preload="none" class="preview-audio">
+                                            <source src="${spotify.preview_url}" type="audio/mpeg">
+                                        </audio>` : 
+                                        '<span class="no-preview">No preview available</span>'
+                                    }
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        spotifyInfo = `
+                            <div class="spotify-no-match">
+                                <span class="no-match-text">No Spotify match found</span>
+                                ${match.error ? `<span class="error-text">(${match.error})</span>` : ''}
+                            </div>
+                        `;
+                    }
+
+                    trackElement.innerHTML = `
+                        <input type="checkbox" id="track-${match.position}" data-position="${match.position}" checked>
+                        <div class="chart-position">${match.position}</div>
+                        <div class="chart-details">
+                            <div class="chart-title">${match.title}</div>
+                            <div class="chart-artist">${match.artist}</div>
+                        </div>
+                        ${spotifyInfo}
+                    `;
+                    
+                    // Add event listener for checkbox changes
+                    const checkbox = trackElement.querySelector('input[type="checkbox"]');
+                    checkbox.addEventListener('change', () => this.updateSelectedCount());
+                    
+                    chartList.appendChild(trackElement);
+                });
+
+                this.updateSelectedCount();
+            }
+
+            showTracksWithoutMatches(tracks) {
+                const chartList = document.getElementById('chartList');
+                chartList.innerHTML = '';
+
+                tracks.forEach(track => {
+                    const trackElement = document.createElement('div');
+                    trackElement.className = 'chart-item';
+                    trackElement.id = `track-element-${track.position}`;
+                    trackElement.innerHTML = `
+                        <input type="checkbox" id="track-${track.position}" data-position="${track.position}" checked>
+                        <div class="chart-position">${track.position}</div>
+                        <div class="chart-details">
+                            <div class="chart-title">${track.title}</div>
+                            <div class="chart-artist">${track.artist}</div>
+                        </div>
+                        <div class="spotify-loading">
+                            <span class="loading-text">Loading Spotify match...</span>
+                        </div>
+                    `;
+                    
+                    // Add event listener for checkbox changes
+                    const checkbox = trackElement.querySelector('input[type="checkbox"]');
+                    checkbox.addEventListener('change', () => this.updateSelectedCount());
+                    
+                    chartList.appendChild(trackElement);
+                });
+
+                this.updateSelectedCount();
+            }
+
+            updateTracksWithMatches(matches) {
+                console.log('🔄 Updating tracks with matches:', matches.length);
+                
+                matches.forEach(match => {
+                    const trackElement = document.getElementById(`track-element-${match.position}`);
+                    if (!trackElement) {
+                        console.warn(`❌ Track element not found for position ${match.position}`);
+                        return;
+                    }
+
+                    const spotifyContainer = trackElement.querySelector('.spotify-loading, .spotify-match, .spotify-no-match');
+                    if (!spotifyContainer) {
+                        console.warn(`❌ Spotify container not found for position ${match.position}`);
+                        return;
+                    }
+
+                    let spotifyInfo = '';
+                    if (match.hasMatch && match.spotifyMatch) {
+                        const spotify = match.spotifyMatch;
+                        console.log(`✅ Updating track ${match.position} with match: ${spotify.name}`);
+                        spotifyInfo = `
+                            <div class="spotify-match">
+                                <div class="spotify-embed-container">
+                                    <iframe 
+                                        data-testid="embed-iframe" 
+                                        style="border-radius:8px" 
+                                        src="https://open.spotify.com/embed/track/${spotify.id}?utm_source=generator" 
+                                        width="100%" 
+                                        height="80" 
+                                        frameBorder="0" 
+                                        allowfullscreen="" 
+                                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                                        loading="lazy">
+                                    </iframe>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        console.log(`❌ No match for track ${match.position}: ${match.error || 'No match found'}`);
+                        spotifyInfo = `
+                            <div class="spotify-no-match">
+                                <span class="no-match-text">No Spotify match found</span>
+                                ${match.error ? `<span class="error-text">(${match.error})</span>` : ''}
+                            </div>
+                        `;
+                    }
+
+                    spotifyContainer.outerHTML = spotifyInfo;
+                });
+                
+                console.log('✅ Finished updating tracks with matches');
+            }
+
+            updateSelectedCount() {
+                const checkboxes = document.querySelectorAll('#chartList input[type="checkbox"]:checked');
+                const count = checkboxes.length;
+                document.getElementById('selectedCount').textContent = `${count} tracks selected`;
+            }
+
+            selectAllTracks() {
+                document.querySelectorAll('#chartList input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+                this.updateSelectedCount();
+            }
+
+            selectNoTracks() {
+                document.querySelectorAll('#chartList input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                this.updateSelectedCount();
+            }
+
+            showStep2() {
+                document.getElementById('step1').classList.add('hidden');
+                document.getElementById('step2').classList.remove('hidden');
+            }
+
+            backToStep1() {
+                document.getElementById('step2').classList.add('hidden');
+                document.getElementById('step1').classList.remove('hidden');
+                this.currentChartData = null;
+            }
+
+            async createPlaylist() {
+                if (!this.currentChartData) {
+                    this.showAlert('No chart data loaded. Please go back to step 1.', 'error');
+                    return;
+                }
+
+                const year = document.getElementById('year').value;
+                const playlistName = document.getElementById('playlistName').value;
+                const isPublic = document.getElementById('isPublic').checked;
+
+                this.showLoading(true, 'Creating Spotify playlist...');
+                this.hidePlaylistResult();
+
+                try {
+                    const response = await fetch('/api/create-playlist', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            year: parseInt(year),
+                            playlistName: playlistName || undefined,
+                            isPublic: isPublic
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        this.showPlaylistResult(data.playlist);
+                        this.showAlert(`Playlist "${data.playlist.name}" created successfully!`, 'success');
+                    } else {
+                        this.showAlert(data.error || 'Failed to create playlist', 'error');
+                    }
+                } catch (error) {
+                    console.error('Create playlist error:', error);
+                    this.showAlert('Network error. Please try again.', 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            async updatePlaylist() {
+                if (!this.selectedPlaylistId) {
+                    this.showAlert('Please select a playlist to update', 'error');
+                    return;
+                }
+
+                const selectedTracks = this.getSelectedTracks();
+                if (selectedTracks.length === 0) {
+                    this.showAlert('Please select at least one track to add', 'error');
+                    return;
+                }
+
+                const year = document.getElementById('year').value;
+                const replaceAll = document.getElementById('replaceAllTracks').checked;
+
+                this.showLoading(true, 'Updating playlist...');
+
+                try {
+                    const response = await fetch('/api/update-playlist', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            playlistId: this.selectedPlaylistId,
+                            year: year,
+                            selectedTracks: selectedTracks,
+                            replaceAll: replaceAll
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        this.showPlaylistResult(data.playlist);
+                        this.showAlert(`Playlist updated successfully! Added ${data.playlist.tracksFound} tracks.`, 'success');
+                    } else {
+                        this.showAlert(data.error || 'Failed to update playlist', 'error');
+                    }
+                } catch (error) {
+                    console.error('Update playlist error:', error);
+                    this.showAlert('Network error. Please try again.', 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            getSelectedTracks() {
+                const checkboxes = document.querySelectorAll('#chartList input[type="checkbox"]:checked');
+                return Array.from(checkboxes).map(checkbox => parseInt(checkbox.dataset.position));
+            }
+
+            // Local storage caching methods
+            getCachedChartData(year) {
+                try {
+                    const cacheKey = `uk-charts-${year}`;
+                    const cached = localStorage.getItem(cacheKey);
+                    if (cached) {
+                        const data = JSON.parse(cached);
+                        // Check if cache is still valid (less than 24 hours old)
+                        const cacheAge = Date.now() - data.timestamp;
+                        const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+                        if (cacheAge < maxAge) {
+                            return data.chartData;
+                        } else {
+                            // Cache expired, remove it
+                            localStorage.removeItem(cacheKey);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Error reading cached chart data:', error);
+                }
+                return null;
+            }
+
+            cacheChartData(year, chartData) {
+                try {
+                    const cacheKey = `uk-charts-${year}`;
+                    const cacheData = {
+                        chartData: chartData,
+                        timestamp: Date.now()
+                    };
+                    localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+                } catch (error) {
+                    console.warn('Error caching chart data:', error);
+                }
+            }
+
+            clearCachedChartData(year) {
+                try {
+                    const cacheKey = `uk-charts-${year}`;
+                    localStorage.removeItem(cacheKey);
+                } catch (error) {
+                    console.warn('Error clearing cached chart data:', error);
+                }
+            }
+
+            clearAllCachedData() {
+                try {
+                    const keys = Object.keys(localStorage);
+                    keys.forEach(key => {
+                        if (key.startsWith('uk-charts-')) {
+                            localStorage.removeItem(key);
+                        }
+                    });
+                    console.log('🗑️ Cleared all cached chart data');
+                } catch (error) {
+                    console.warn('Error clearing all cached data:', error);
+                }
+            }
+
+            showLoading(show, text = 'Loading...') {
+                const loading = document.getElementById('loading');
+                const loadingText = document.getElementById('loadingText');
+                
+                if (show) {
+                    loadingText.textContent = text;
+                    loading.classList.add('show');
+                } else {
+                    loading.classList.remove('show');
+                }
+            }
+
+            showPlaylistResult(playlist) {
+                document.getElementById('tracksFound').textContent = playlist.tracksFound;
+                document.getElementById('tracksSearched').textContent = playlist.tracksSearched;
+                document.getElementById('playlistYear').textContent = playlist.year;
+                document.getElementById('playlistLink').href = playlist.url;
+                document.getElementById('playlistResult').classList.add('show');
+            }
+
+            hidePlaylistResult() {
+                document.getElementById('playlistResult').classList.remove('show');
+            }
+
+            showAlert(message, type = 'info') {
+                const alert = document.getElementById('alert');
+                alert.textContent = message;
+                alert.className = `alert alert-${type} show`;
+                
+                setTimeout(() => {
+                    alert.classList.remove('show');
+                }, 5000);
+            }
+
+            handleURLParams() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const success = urlParams.get('success');
+                const error = urlParams.get('error');
+                
+                if (success) {
+                    this.showAlert('Successfully logged in to Spotify!', 'success');
+                } else if (error) {
+                    this.showAlert(`Login error: ${decodeURIComponent(error)}`, 'error');
+                }
+                
+                // Clean up URL
+                if (success || error) {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            }
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new UKChartsApp();
+        });
+    </script>
+</body>
+</html>
