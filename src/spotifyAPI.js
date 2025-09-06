@@ -134,9 +134,9 @@ export class SpotifyAPI {
    * Search for tracks on Spotify
    * @param {string} query - Search query
    * @param {number} limit - Number of results to return
-   * @returns {Promise<Object|null>} Track data or null if not found
+   * @returns {Promise<Array>} Array of track data or empty array if not found
    */
-  async searchTracks(query, limit = 1) {
+  async searchTracks(query, limit = 5) {
     try {
       const response = await axios.get(`${this.baseURL}/search`, {
         headers: this.getHeaders(),
@@ -147,29 +147,203 @@ export class SpotifyAPI {
         }
       });
 
-      const tracks = response.data.tracks.items;
+      let tracks = response.data.tracks.items;
+      
+      // If we have good results, return them
       if (tracks.length > 0) {
-        const track = tracks[0];
-        console.log(`🎵 Found: ${track.name} by ${track.artists[0].name}`);
-        return {
+        console.log(`🎵 Found ${tracks.length} results for: ${query}`);
+        return tracks.map(track => ({
           id: track.id,
           uri: track.uri,
           name: track.name,
           artist: track.artists[0].name,
+          artists: track.artists.map(a => a.name),
           album: track.album.name,
           album_artwork: track.album.images?.[0]?.url,
           duration_ms: track.duration_ms,
           preview_url: track.preview_url,
-          external_urls: track.external_urls
-        };
+          external_urls: track.external_urls,
+          popularity: track.popularity,
+          explicit: track.explicit,
+          album_release_date: track.album.release_date,
+          album_type: track.album.album_type
+        }));
       }
 
-      console.log(`❌ No results found for: ${query}`);
-      return null;
+      // If no results, try a simpler search without quotes
+      console.log(`🔄 No results for structured query, trying simpler search...`);
+      const simpleQuery = query.replace(/track:"([^"]*)" artist:"([^"]*)"/, '$1 $2');
+      
+      const fallbackResponse = await axios.get(`${this.baseURL}/search`, {
+        headers: this.getHeaders(),
+        params: {
+          q: simpleQuery,
+          type: 'track',
+          limit: limit
+        }
+      });
+
+      tracks = fallbackResponse.data.tracks.items;
+      if (tracks.length > 0) {
+        console.log(`🎵 Found ${tracks.length} results for simple query: ${simpleQuery}`);
+        return tracks.map(track => ({
+          id: track.id,
+          uri: track.uri,
+          name: track.name,
+          artist: track.artists[0].name,
+          artists: track.artists.map(a => a.name),
+          album: track.album.name,
+          album_artwork: track.album.images?.[0]?.url,
+          duration_ms: track.duration_ms,
+          preview_url: track.preview_url,
+          external_urls: track.external_urls,
+          popularity: track.popularity,
+          explicit: track.explicit,
+          album_release_date: track.album.release_date,
+          album_type: track.album.album_type
+        }));
+      }
+
+      console.log(`❌ No results found for: ${query} or ${simpleQuery}`);
+      return [];
     } catch (error) {
       console.error(`❌ Error searching for "${query}":`, error.response?.data || error.message);
-      return null;
+      return [];
     }
+  }
+
+  /**
+   * Select the best match from multiple Spotify results
+   * @param {Array} tracks - Array of track objects from search
+   * @param {string} originalTitle - Original track title from chart
+   * @param {string} originalArtist - Original artist from chart
+   * @returns {number} Index of the best match
+   */
+  selectBestMatch(tracks, originalTitle, originalArtist) {
+    if (!tracks || tracks.length === 0) return 0;
+    if (tracks.length === 1) return 0;
+
+    console.log(`🎯 Selecting best match for "${originalTitle}" by ${originalArtist} from ${tracks.length} options`);
+
+    const scoredTracks = tracks.map((track, index) => {
+      let score = 0;
+
+      // Popularity score (0-100, higher is better)
+      score += track.popularity || 0;
+
+      // Title similarity bonus
+      const titleSimilarity = this.calculateSimilarity(originalTitle.toLowerCase(), track.name.toLowerCase());
+      score += titleSimilarity * 20; // Up to 20 points for title match
+
+      // Artist similarity bonus
+      const artistSimilarity = this.calculateSimilarity(originalArtist.toLowerCase(), track.artist.toLowerCase());
+      score += artistSimilarity * 15; // Up to 15 points for artist match
+
+      // Prefer studio albums over compilations/live albums
+      if (track.album_type === 'album') {
+        score += 10;
+      } else if (track.album_type === 'single') {
+        score += 5;
+      }
+
+      // Prefer non-explicit versions (for chart music)
+      if (!track.explicit) {
+        score += 5;
+      }
+
+      // Prefer more recent releases (within reason)
+      if (track.album_release_date) {
+        const releaseYear = parseInt(track.album_release_date.split('-')[0]);
+        const currentYear = new Date().getFullYear();
+        if (releaseYear >= currentYear - 10) { // Within last 10 years
+          score += 3;
+        }
+      }
+
+      // Penalty for obvious covers/alternatives (heuristic)
+      const titleLower = track.name.toLowerCase();
+      const artistLower = track.artist.toLowerCase();
+      
+      // Penalty for "cover", "tribute", "karaoke", "instrumental"
+      if (titleLower.includes('cover') || titleLower.includes('tribute') || 
+          titleLower.includes('karaoke') || titleLower.includes('instrumental') ||
+          artistLower.includes('cover') || artistLower.includes('tribute')) {
+        score -= 30;
+      }
+
+      // Penalty for "party", "dance", "remix" versions
+      if (titleLower.includes('party') || titleLower.includes('dance') || 
+          titleLower.includes('remix') || titleLower.includes('mix')) {
+        score -= 20;
+      }
+
+      console.log(`  ${index}: "${track.name}" by ${track.artist} - Score: ${score.toFixed(1)} (Popularity: ${track.popularity})`);
+      
+      return { index, score, track };
+    });
+
+    // Sort by score (highest first)
+    scoredTracks.sort((a, b) => b.score - a.score);
+    
+    const bestMatch = scoredTracks[0];
+    console.log(`✅ Selected: "${bestMatch.track.name}" by ${bestMatch.track.artist} (Score: ${bestMatch.score.toFixed(1)})`);
+    
+    return bestMatch.index;
+  }
+
+  /**
+   * Calculate string similarity using simple character overlap
+   * @param {string} str1 - First string
+   * @param {string} str2 - Second string
+   * @returns {number} Similarity score between 0 and 1
+   */
+  calculateSimilarity(str1, str2) {
+    // Remove common words and clean up
+    const clean1 = str1.replace(/\b(the|a|an|and|or|but|in|on|at|to|for|of|with|by)\b/g, '').trim();
+    const clean2 = str2.replace(/\b(the|a|an|and|or|but|in|on|at|to|for|of|with|by)\b/g, '').trim();
+    
+    // Simple character overlap calculation
+    const longer = clean1.length > clean2.length ? clean1 : clean2;
+    const shorter = clean1.length > clean2.length ? clean2 : clean1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const editDistance = this.levenshteinDistance(longer, shorter);
+    return (longer.length - editDistance) / longer.length;
+  }
+
+  /**
+   * Calculate Levenshtein distance between two strings
+   * @param {string} str1 - First string
+   * @param {string} str2 - Second string
+   * @returns {number} Edit distance
+   */
+  levenshteinDistance(str1, str2) {
+    const matrix = [];
+    
+    for (let i = 0; i <= str2.length; i++) {
+      matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= str1.length; j++) {
+      matrix[0][j] = j;
+    }
+    
+    for (let i = 1; i <= str2.length; i++) {
+      for (let j = 1; j <= str1.length; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
   }
 
   /**
@@ -263,7 +437,7 @@ export class SpotifyAPI {
   }
 
   /**
-   * Search for playlists
+   * Search for playlists (searches all public playlists)
    * @param {string} query - Search query
    * @param {string} accessToken - Access token (optional, uses instance token if not provided)
    * @param {number} limit - Number of results to return
@@ -287,6 +461,34 @@ export class SpotifyAPI {
       return response.data.playlists.items;
     } catch (error) {
       console.error('❌ Error searching playlists:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get current user's playlists
+   * @param {string} accessToken - Access token (optional, uses instance token if not provided)
+   * @param {number} limit - Number of results to return
+   * @param {number} offset - Offset for pagination
+   * @returns {Promise<Array>} Array of user's playlists
+   */
+  async getUserPlaylists(accessToken = null, limit = 50, offset = 0) {
+    try {
+      const headers = accessToken ? 
+        { 'Authorization': `Bearer ${accessToken}` } : 
+        this.getHeaders();
+        
+      const response = await axios.get(`${this.baseURL}/me/playlists`, {
+        headers,
+        params: {
+          limit: limit,
+          offset: offset
+        }
+      });
+
+      return response.data.items;
+    } catch (error) {
+      console.error('❌ Error getting user playlists:', error.response?.data || error.message);
       throw error;
     }
   }
@@ -349,7 +551,7 @@ export class SpotifyAPI {
    * @param {number} limit - Number of results per search
    * @returns {Promise<Array<string>>} Array of found track URIs
    */
-  async searchMultipleTracks(chartData, limit = 1) {
+  async searchMultipleTracks(chartData, limit = 5) {
     const foundTracks = [];
     const notFoundTracks = [];
 
@@ -358,12 +560,17 @@ export class SpotifyAPI {
     for (const [index, entry] of chartData.entries()) {
       console.log(`Searching ${index + 1}/${chartData.length}: ${entry.searchQuery}`);
       
-      const track = await this.searchTracks(entry.searchQuery, limit);
+      const tracks = await this.searchTracks(entry.searchQuery, limit);
       
-      if (track) {
-        foundTracks.push(track.uri);
+      if (tracks && tracks.length > 0) {
+        // Use smart selection to pick the best match
+        const bestMatchIndex = this.selectBestMatch(tracks, entry.title, entry.artist);
+        const selectedTrack = tracks[bestMatchIndex];
+        foundTracks.push(selectedTrack.uri);
+        console.log(`✅ Selected: ${selectedTrack.name} by ${selectedTrack.artist}`);
       } else {
         notFoundTracks.push(entry);
+        console.log(`❌ No match found for: ${entry.title} by ${entry.artist}`);
       }
 
       // Add a small delay to avoid rate limiting

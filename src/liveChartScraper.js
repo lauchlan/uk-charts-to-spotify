@@ -5,6 +5,31 @@ import axios from 'axios';
 export class LiveChartScraper {
   constructor() {
     this.baseUrl = 'https://www.officialcharts.com/charts/end-of-year-singles-chart';
+    
+    // Hardcoded URL mappings for each year (no consistent pattern)
+    this.yearUrlMap = {
+      2024: '20240101/37501/',
+      2023: '20220101/37501/',
+      2022: '20210101/37501/',
+      2021: '20200101/37501-0/',
+      2020: '20200101/37501/',
+      2019: '20190101/37501/',
+      2018: '20180101/37501/',
+      2017: '20160101/37501/',
+      2016: '20160108/37501/',
+      2015: '20150104/37501/',
+      2014: '20140105/37501/',
+      2013: '20130106/37501/',
+      2012: '20120108/37501/',
+      2011: '20110109/37501/',
+      2010: '20100110/37501/',
+      2009: '20090104/37501/',
+      2008: '20080106/37501/',
+      2007: '20070107/37501/',
+      2006: '20060108/37501/',
+      2005: '20050103/37501/',
+      2004: '20040104/37501/'
+    };
   }
 
   /**
@@ -13,8 +38,11 @@ export class LiveChartScraper {
    * @returns {string} URL for the year's chart
    */
   getYearChartUrl(year) {
-    const dateStr = `${year}0101`;
-    return `${this.baseUrl}/${dateStr}/37501/`;
+    const urlPath = this.yearUrlMap[year];
+    if (!urlPath) {
+      throw new Error(`No URL mapping found for year ${year}. Supported years: ${Object.keys(this.yearUrlMap).join(', ')}`);
+    }
+    return `${this.baseUrl}/${urlPath}`;
   }
 
   /**
@@ -111,7 +139,7 @@ export class LiveChartScraper {
                       position: i + 1,
                       title: item.title.trim().toUpperCase(),
                       artist: item.artist.trim().toUpperCase(),
-                      searchQuery: `${item.title.trim()} ${item.artist.trim()}`
+                      searchQuery: `track:"${item.title.trim()}" artist:"${item.artist.trim()}"`
                     });
                   }
                 }
@@ -202,7 +230,7 @@ export class LiveChartScraper {
               position,
               title,
               artist,
-              searchQuery: `${title} ${artist}`
+              searchQuery: `track:"${title}" artist:"${artist}"`
             });
           }
         }
@@ -233,25 +261,11 @@ export class LiveChartScraper {
     const $ = cheerio.load(response.data);
     const tracks = [];
     
-    // Try to find chart items (excluding advertisements)
-    const selectors = [
-      '.chart-item:not(.chart-ad)',
-      '.track-info',
-      '[class*="chart"] [class*="item"]:not([class*="ad"])',
-      '[class*="track"]'
-    ];
-    
-    let chartItems = [];
-    for (const selector of selectors) {
-      chartItems = $(selector);
-      if (chartItems.length > 0) {
-        console.log(`Found ${chartItems.length} items with selector: ${selector}`);
-        break;
-      }
-    }
+    // Find chart items using the correct selector
+    const chartItems = $('.chart-item');
+    console.log(`Found ${chartItems.length} chart items`);
     
     chartItems.each((index, element) => {
-      if (index >= limit) return false;
       
       const $element = $(element);
       
@@ -259,36 +273,72 @@ export class LiveChartScraper {
       const positionEl = $element.find('.position strong');
       const position = positionEl.text().trim();
       
-      // Extract title from .chart-name span and remove prefixes
-      const titleEl = $element.find('.chart-name span');
-      let title = titleEl.text().trim();
-      
-      // Remove "New" prefix
-      if (title.startsWith('New')) {
-        title = title.substring(3).trim();
+      if (!position) {
+        console.log(`❌ No position found for chart item ${index}`);
+        console.log(`🔍 Position element HTML:`, positionEl.html());
+        console.log(`🔍 Chart item HTML:`, $element.html().substring(0, 300) + '...');
       }
       
-      // Remove "RE" prefix (re-entry indicator)
-      if (title.startsWith('RE')) {
-        title = title.substring(2).trim();
-      }
+      // Extract track title and artist from description block anchor spans
+      const descriptionBlock = $element.find('.description.block');
+      let title = '', artist = '';
       
-      // Extract artist from .chart-artist span
-      const artistEl = $element.find('.chart-artist span');
-      const artist = artistEl.text().trim();
+      if (descriptionBlock.length > 0) {
+        console.log(`🔍 Found description block for position ${position}`);
+        
+        // Get all anchor tags within the description block
+        const anchors = descriptionBlock.find('a');
+        console.log(`🔍 Found ${anchors.length} anchor tags in description block`);
+        
+        if (anchors.length >= 2) {
+          // First anchor should be the track title
+          const titleAnchor = anchors.eq(0);
+          const titleSpans = titleAnchor.find('span');
+          if (titleSpans.length > 0) {
+            title = titleSpans.last().text().trim();
+            console.log(`🔍 Title from first anchor: "${title}"`);
+          }
+          
+          // Second anchor should be the artist
+          const artistAnchor = anchors.eq(1);
+          const artistSpans = artistAnchor.find('span');
+          if (artistSpans.length > 0) {
+            artist = artistSpans.last().text().trim();
+            console.log(`🔍 Artist from second anchor: "${artist}"`);
+          }
+        } else {
+          console.log(`❌ Expected 2 anchor tags, found ${anchors.length}`);
+        }
+      } else {
+        console.log(`❌ No description block found for position ${position}`);
+        console.log(`🔍 Chart item HTML:`, $element.html().substring(0, 200) + '...');
+      }
       
       if (position && title && artist) {
         tracks.push({
           position: parseInt(position),
           title: title.toUpperCase(),
           artist: artist.toUpperCase(),
-          searchQuery: `${title.toUpperCase()} ${artist.toUpperCase()}`
+          searchQuery: `track:"${title.toUpperCase()}" artist:"${artist.toUpperCase()}"`
         });
       }
     });
     
     // Sort by position
     tracks.sort((a, b) => a.position - b.position);
+    
+    // Check for missing positions
+    const foundPositions = tracks.map(t => t.position);
+    const missingPositions = [];
+    for (let i = 1; i <= limit; i++) {
+      if (!foundPositions.includes(i)) {
+        missingPositions.push(i);
+      }
+    }
+    
+    if (missingPositions.length > 0) {
+      console.log(`⚠️ Missing positions: ${missingPositions.join(', ')}`);
+    }
     
     console.log(`Extracted ${tracks.length} tracks with Cheerio`);
     return tracks;

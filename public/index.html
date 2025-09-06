@@ -163,6 +163,57 @@
             font-weight: 600;
         }
 
+        .filter-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .toggle-slider {
+            position: relative;
+            width: 40px;
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            transition: background 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .filter-toggle input[type="checkbox"] {
+            display: none;
+        }
+
+        .filter-toggle input[type="checkbox"]:checked + .toggle-slider {
+            background: #1db954;
+        }
+
+        .filter-toggle input[type="checkbox"]:checked + .toggle-slider::before {
+            transform: translateX(20px);
+        }
+
+        .toggle-label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .filter-info {
+            font-size: 11px;
+            color: #888;
+            margin-left: 8px;
+        }
+
         .info-icon {
             width: 16px;
             height: 16px;
@@ -544,7 +595,7 @@
             border-radius: 4px;
             background: #fafafa;
             transition: all 0.2s ease;
-            min-height: 70px;
+            min-height: 100px;
         }
 
         .chart-content {
@@ -599,9 +650,110 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            cursor: help;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .chart-track-info:hover {
+            background-color: #f0f8ff;
+            border-radius: 3px;
+        }
+        
+        .chart-track-info.has-multiple-matches::after {
+            content: " ▼";
+            color: #666;
+            font-size: 10px;
+            margin-left: 4px;
             margin: 0;
             padding: 0;
+        }
+        
+        .chart-track-info.has-mismatch {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 3px;
+            position: relative;
+        }
+        
+        .chart-track-info.has-mismatch::before {
+            content: "⚠️";
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+        }
+        
+        .mismatch-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            background: #333;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            z-index: 1000;
+            display: none;
+            margin-bottom: 4px;
+        }
+        
+        .chart-track-info.has-mismatch:hover .mismatch-tooltip {
+            display: block;
+        }
+        
+        .accept-match-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 10px;
+            cursor: pointer;
+            z-index: 1001;
+            display: none;
+        }
+        
+        .chart-track-info:hover .accept-match-btn {
+            display: block;
+        }
+        
+        .accept-match-btn:hover {
+            background: #218838;
+        }
+        
+        .fetch-more-btn {
+            position: absolute;
+            right: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 10px;
+            cursor: pointer;
+            z-index: 1001;
+            display: none;
+        }
+        
+        .chart-track-info.has-multiple-matches:hover .fetch-more-btn {
+            display: block;
+        }
+        
+        .fetch-more-btn:hover {
+            background: #0056b3;
+        }
+        
+        .fetch-more-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
         }
 
         .spotify-match {
@@ -610,7 +762,96 @@
             padding: 6px 8px;
             background: #f8f9fa;
             border-radius: 4px;
-            border-left: 2px solid #1db954;
+        }
+
+        .album-cover-container {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            min-height: 64px;
+        }
+
+        .album-cover-container:hover {
+            transform: scale(1.02);
+        }
+
+        .album-cover {
+            width: 64px;
+            height: 64px;
+            border-radius: 6px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .track-info {
+            margin-left: 12px;
+            flex: 1;
+            color: white;
+            min-width: 0; /* Allow flex item to shrink */
+        }
+
+        .track-title {
+            font-weight: 600;
+            font-size: 14px;
+            line-height: 1.3;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: help;
+        }
+
+        .track-artist {
+            font-size: 12px;
+            opacity: 0.9;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: help;
+        }
+
+        .single-player-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 450px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            padding: 16px;
+            z-index: 1000;
+            display: none !important;
+        }
+
+        .single-player-container.show {
+            display: block !important;
+        }
+
+        .player-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #999;
+            cursor: pointer;
+            padding: 4px;
+            z-index: 1001;
+        }
+
+        .player-close:hover {
+            color: #333;
+        }
+
+        .player-iframe {
+            width: 100%;
+            height: 400px;
+            border: none;
+            border-radius: 6px;
             min-width: 0;
         }
 
@@ -630,7 +871,31 @@
             border-radius: 6px;
             border: none;
             width: 100%;
-            height: 90px;
+            height: 80px;
+        }
+
+        .match-selector {
+            margin-bottom: 4px;
+            display: none; /* Hidden by default */
+        }
+        
+        .match-selector.expanded {
+            display: block; /* Show when expanded */
+        }
+
+        .match-dropdown {
+            width: 100%;
+            padding: 2px 4px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 11px;
+            background: white;
+            color: #333;
+        }
+
+        .match-dropdown:focus {
+            outline: none;
+            border-color: #1db954;
         }
 
 
@@ -680,17 +945,19 @@
             align-items: center;
             justify-content: center;
             margin-top: 15px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
 
         .playlist-creation .btn {
             white-space: nowrap;
             min-width: fit-content;
+            padding: 8px 12px;
+            font-size: 14px;
         }
 
         #backToStep1Btn {
-            min-width: 140px;
-            padding: 8px 16px;
+            min-width: 120px;
+            padding: 8px 12px;
         }
 
         .existing-playlists {
@@ -777,12 +1044,22 @@
             text-align: center;
         }
 
+        .playlist-selector {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            background: white;
+            min-width: 180px;
+        }
+
         .playlist-creation .checkbox-group {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 12px;
+            gap: 4px;
+            font-size: 11px;
             white-space: nowrap;
+            margin-left: 8px;
         }
 
         .auth-notice {
@@ -836,6 +1113,7 @@
                 flex-direction: column;
                 align-items: center;
                 gap: 8px;
+                flex-wrap: wrap;
             }
 
             .playlist-creation .btn {
@@ -845,6 +1123,7 @@
 
             .playlist-creation .checkbox-group {
                 font-size: 11px;
+                margin-left: 0;
             }
         }
     </style>
@@ -925,6 +1204,14 @@
                         <span id="totalTracks" class="info-value">100</span>
                     </div>
                     <div class="info-section">
+                        <label class="filter-toggle">
+                            <input type="checkbox" id="showAllTracks">
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Show all</span>
+                        </label>
+                        <span class="filter-info" id="filterInfo">Showing tracks needing verification</span>
+                    </div>
+                    <div class="info-section">
                         <span class="info-label">Year:</span>
                         <span id="chartYear" class="info-value">2024</span>
                     </div>
@@ -976,7 +1263,10 @@
                         <button id="createPlaylistBtn" class="btn">Create New Playlist</button>
                     </div>
                     <div id="updateExistingSection" class="hidden">
-                        <button id="updatePlaylistBtn" class="btn">Update Selected Playlist</button>
+                        <select id="playlistSelector" class="playlist-selector">
+                            <option value="">Select a playlist...</option>
+                        </select>
+                        <button id="updatePlaylistBtn" class="btn">Add to Playlist</button>
                         <label class="checkbox-group">
                             <input type="checkbox" id="replaceAllTracks">
                             <span>Replace all tracks</span>
@@ -1014,12 +1304,19 @@
         </div>
     </div>
 
+    <!-- Single Spotify Player -->
+    <div id="singlePlayer" class="single-player-container">
+        <button id="playerClose" class="player-close" onclick="closePlayer()">×</button>
+        <iframe id="playerIframe" class="player-iframe" src="" allow="encrypted-media"></iframe>
+    </div>
+
     <script>
         class UKChartsApp {
             constructor() {
                 this.isAuthenticated = false;
                 this.user = null;
                 this.currentChartData = null;
+                this.tracksLoaded = false;
                 this.init();
             }
 
@@ -1044,6 +1341,7 @@
                 document.getElementById('selectAllBtn').addEventListener('click', () => this.selectAllTracks());
                 document.getElementById('selectNoneBtn').addEventListener('click', () => this.selectNoTracks());
                 document.getElementById('year').addEventListener('change', () => this.updatePlaylistName());
+                document.getElementById('showAllTracks').addEventListener('change', () => this.toggleTrackFilter());
                 
                 // User dropdown functionality
                 const userInfo = document.getElementById('userInfo');
@@ -1178,8 +1476,96 @@
                 }
             }
 
+            toggleTrackFilter() {
+                const showAllCheckbox = document.getElementById('showAllTracks');
+                const filterInfo = document.getElementById('filterInfo');
+                const showAll = showAllCheckbox.checked;
+                
+                console.log(`🔍 Toggle filter: showAll = ${showAll}`);
+                
+                if (showAll) {
+                    filterInfo.textContent = 'Showing all tracks';
+                    this.showAllTracks();
+                } else {
+                    filterInfo.textContent = 'Showing tracks needing verification';
+                    this.showTracksNeedingVerification();
+                }
+            }
+
+            showTracksNeedingVerification() {
+                const chartList = document.getElementById('chartList');
+                if (!chartList) {
+                    console.log('❌ Chart list not found');
+                    return;
+                }
+                
+                const trackElements = chartList.querySelectorAll('.chart-item');
+                console.log(`🔍 Found ${trackElements.length} track elements for verification filter`);
+                
+                if (trackElements.length === 0) {
+                    console.log('❌ No track elements found - tracks may not be loaded yet');
+                    return;
+                }
+                
+                let visibleCount = 0;
+                trackElements.forEach(element => {
+                    const trackInfo = element.querySelector('.chart-track-info');
+                    const hasMismatch = trackInfo && trackInfo.classList.contains('has-mismatch');
+                    
+                    // Only show tracks that have mismatches (need verification)
+                    if (hasMismatch) {
+                        element.style.display = 'flex';
+                        visibleCount++;
+                    } else {
+                        element.style.display = 'none';
+                    }
+                });
+                
+                console.log(`🔍 Showing ${visibleCount} tracks needing verification`);
+            }
+
+            showAllTracks() {
+                if (!this.tracksLoaded) {
+                    console.log('❌ Tracks not loaded yet - cannot apply filter');
+                    return;
+                }
+                
+                const chartList = document.getElementById('chartList');
+                if (!chartList) {
+                    console.log('❌ Chart list not found');
+                    return;
+                }
+                
+                const trackElements = chartList.querySelectorAll('.chart-item');
+                console.log(`🔍 Found ${trackElements.length} track elements for show all filter`);
+                
+                if (trackElements.length === 0) {
+                    console.log('❌ No track elements found - tracks may not be loaded yet');
+                    console.log('🔍 Chart list innerHTML length:', chartList.innerHTML.length);
+                    console.log('🔍 Chart list children count:', chartList.children.length);
+                    return;
+                }
+                
+                let shownCount = 0;
+                trackElements.forEach((element, index) => {
+                    // Force show all tracks regardless of previous state
+                    element.style.display = 'flex';
+                    shownCount++;
+                    
+                    // Log first few for debugging
+                    if (index < 3) {
+                        console.log(`🔍 Track ${index + 1}: ${element.id} - display set to flex`);
+                    }
+                });
+                
+                console.log(`🔍 Showing all ${shownCount} tracks`);
+            }
+
             async loadChartData(event, forceRefresh = false) {
                 if (event) event.preventDefault();
+                
+                // Reset tracks loaded flag
+                this.tracksLoaded = false;
                 
                 const year = document.getElementById('year').value;
                 
@@ -1187,6 +1573,9 @@
                     this.showAlert('Please select a year', 'error');
                     return;
                 }
+
+                // Update URL parameters
+                this.updateURL(year, forceRefresh);
 
                 // Check cache first (unless force refresh)
                 if (!forceRefresh) {
@@ -1270,6 +1659,9 @@
                     this.showAlert('Please select a year first', 'error');
                     return;
                 }
+
+                // Update URL parameters with refresh flag
+                this.updateURL(year, true);
                 
                 // Clear cache for this year (both chart data and Spotify matches)
                 this.clearCachedChartData(year);
@@ -1328,6 +1720,9 @@
                         authNotice.classList.add('hidden');
                         createNewSection.classList.remove('hidden');
                         updateExistingSection.classList.remove('hidden');
+                        
+                        // Populate playlist selector
+                        this.populatePlaylistSelector();
                     } else {
                         // User is authenticated but no existing playlists found
                         authNotice.classList.add('hidden');
@@ -1342,7 +1737,7 @@
                 }
 
                 // Show all tracks with checkboxes
-                this.showAllTracks(data.tracks);
+                this.displayAllTracks(data.tracks);
             }
 
             showExistingPlaylists() {
@@ -1387,7 +1782,7 @@
                 }
             }
 
-            async showAllTracks(tracks) {
+            async displayAllTracks(tracks) {
                 const chartList = document.getElementById('chartList');
                 chartList.innerHTML = '';
 
@@ -1411,6 +1806,11 @@
                     if (cachedMatches && !this.forceRefresh) {
                         console.log('📦 Using cached Spotify matches for', year);
                         const matches = JSON.parse(cachedMatches);
+                        this.currentMatches = matches; // Store for dropdown selection
+                        
+                        // Load accepted matches from cache
+                        this.loadAcceptedMatchesFromCache(year);
+                        
                         this.updateTracksWithMatches(matches);
                         return;
                     }
@@ -1418,6 +1818,24 @@
                     if (this.forceRefresh) {
                         console.log('🔄 Force refresh: clearing Spotify match cache for', year);
                         localStorage.removeItem(cacheKey);
+                        localStorage.removeItem(`accepted_matches_${year}`); // Also clear accepted matches
+                    }
+                    
+                    // Also clear cache if it doesn't have the new artists array format
+                    if (cachedMatches && !this.forceRefresh) {
+                        try {
+                            const matches = JSON.parse(cachedMatches);
+                            const firstMatch = matches.find(m => m.spotifyMatches && m.spotifyMatches.length > 0);
+                            if (firstMatch && firstMatch.spotifyMatches[0] && !firstMatch.spotifyMatches[0].artists) {
+                                console.log('🔄 Clearing old cache format (no artists array) for', year);
+                                localStorage.removeItem(cacheKey);
+                                cachedMatches = null;
+                            }
+                        } catch (e) {
+                            console.log('🔄 Clearing corrupted cache for', year);
+                            localStorage.removeItem(cacheKey);
+                            cachedMatches = null;
+                        }
                     }
                     
                     // Safely encode tracks data to prevent JSON parsing issues
@@ -1502,6 +1920,7 @@
                         batchResults.forEach(matches => {
                             if (matches) {
                                 allMatches = allMatches.concat(matches);
+                                this.currentMatches = allMatches; // Store for dropdown selection
                                 // Update the display with matches from this batch
                                 this.updateTracksWithMatches(matches);
                             }
@@ -1522,6 +1941,9 @@
                         const cacheKey = `spotify_matches_${year}`;
                         localStorage.setItem(cacheKey, JSON.stringify(allMatches));
                         console.log(`💾 Cached ${allMatches.length} Spotify matches for ${year}`);
+                        
+                        // Load accepted matches from cache
+                        this.loadAcceptedMatchesFromCache(year);
                     }
 
                 } catch (error) {
@@ -1615,6 +2037,10 @@
                     const checkbox = trackElement.querySelector('input[type="checkbox"]');
                     checkbox.addEventListener('change', () => this.updateSelectedCount());
                     
+                    // Add click handler for track info (for expanding match selector)
+                    const trackInfo = trackElement.querySelector('.chart-track-info');
+                    trackInfo.addEventListener('click', () => this.toggleMatchSelector(track.position));
+                    
                     chartList.appendChild(trackElement);
                 });
 
@@ -1638,22 +2064,40 @@
                     }
 
                     let spotifyInfo = '';
-                    if (match.hasMatch && match.spotifyMatch) {
-                        const spotify = match.spotifyMatch;
-                        console.log(`✅ Updating track ${match.position} with match: ${spotify.name}`);
+                    if (match.hasMatch && match.spotifyMatches && match.spotifyMatches.length > 0) {
+                        const selectedIndex = match.selectedMatch || 0;
+                        const selectedTrack = match.spotifyMatches[selectedIndex];
+                        console.log(`✅ Updating track ${match.position} with match: ${selectedTrack.name}`);
+                        
+                        // Show match selector if there are multiple matches (hidden by default)
+                        let matchSelector = '';
+                        if (match.spotifyMatches.length > 1) {
+                            matchSelector = `
+                                <div class="match-selector" id="match-selector-${match.position}">
+                                    <select class="match-dropdown" data-position="${match.position}">
+                                        ${match.spotifyMatches.map((track, index) => 
+                                            `<option value="${index}" ${index === selectedIndex ? 'selected' : ''}>
+                                                ${track.name} - ${track.artist} (${track.album})
+                                            </option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                            `;
+                        }
+                        
+                        // Debug: log the selected track data
+                        console.log(`🔍 Track ${match.position} Spotify data:`, selectedTrack);
+                        console.log(`🔍 Artists array:`, selectedTrack.artists);
+                        console.log(`🔍 Single artist:`, selectedTrack.artist);
+                        
                         spotifyInfo = `
-                            <div class="spotify-embed-container">
-                                <iframe 
-                                    data-testid="embed-iframe" 
-                                    style="border-radius:8px" 
-                                    src="https://open.spotify.com/embed/track/${spotify.id}?utm_source=generator" 
-                                    width="100%" 
-                                    height="80" 
-                                    frameBorder="0" 
-                                    allowfullscreen="" 
-                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                                    loading="lazy">
-                                </iframe>
+                            ${matchSelector}
+                            <div class="album-cover-container" onclick="app.playTrack(${match.position})">
+                                <img class="album-cover" src="${selectedTrack.album_artwork || '/placeholder-album.png'}" alt="Album Cover" onload="app.updateAlbumCoverBackground(this.parentElement, this.src)">
+                                <div class="track-info">
+                                    <div class="track-title" title="${selectedTrack.name}">${selectedTrack.name}</div>
+                                    <div class="track-artist" title="${selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist}">${selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist}</div>
+                                </div>
                             </div>
                         `;
                     } else {
@@ -1667,9 +2111,550 @@
                     }
 
                     spotifyContainer.outerHTML = spotifyInfo;
+                    
+                    // Update track info to show multiple matches indicator and mismatch warnings
+                    const trackInfo = trackElement.querySelector('.chart-track-info');
+                    
+                    // Clear existing classes
+                    trackInfo.classList.remove('has-multiple-matches', 'has-mismatch');
+                    
+                    // Add multiple matches indicator
+                    if (match.hasMatch && match.spotifyMatches && match.spotifyMatches.length > 1) {
+                        trackInfo.classList.add('has-multiple-matches');
+                    }
+                    
+                    // Check for mismatches
+                    if (match.hasMatch && match.spotifyMatches && match.spotifyMatches.length > 0) {
+                        const selectedIndex = match.selectedMatch || 0;
+                        const selectedTrack = match.spotifyMatches[selectedIndex];
+                        
+                        const mismatch = this.detectMismatch(
+                            match.title, 
+                            match.artist, 
+                            selectedTrack.name, 
+                            selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist
+                        );
+                        
+                        if (mismatch.hasMismatch && !match.accepted) {
+                            trackInfo.classList.add('has-mismatch');
+                            
+                            // Add tooltip with mismatch details
+                            let tooltip = trackInfo.querySelector('.mismatch-tooltip');
+                            if (!tooltip) {
+                                tooltip = document.createElement('div');
+                                tooltip.className = 'mismatch-tooltip';
+                                trackInfo.appendChild(tooltip);
+                            }
+                            
+                            tooltip.innerHTML = `
+                                <strong>⚠️ Potential Mismatch:</strong><br>
+                                ${mismatch.issues.join('<br>')}
+                            `;
+                            
+                            // Add accept button
+                            let acceptBtn = trackInfo.querySelector('.accept-match-btn');
+                            if (!acceptBtn) {
+                                acceptBtn = document.createElement('button');
+                                acceptBtn.className = 'accept-match-btn';
+                                acceptBtn.textContent = 'Accept';
+                                acceptBtn.onclick = (e) => {
+                                    e.stopPropagation();
+                                    this.acceptMatch(match.position);
+                                };
+                                trackInfo.appendChild(acceptBtn);
+                            }
+                            
+                            // Add fetch more button if there are multiple matches
+                            if (match.spotifyMatches && match.spotifyMatches.length > 1) {
+                                let fetchMoreBtn = trackInfo.querySelector('.fetch-more-btn');
+                                if (!fetchMoreBtn) {
+                                    fetchMoreBtn = document.createElement('button');
+                                    fetchMoreBtn.className = 'fetch-more-btn';
+                                    fetchMoreBtn.textContent = 'More';
+                                    fetchMoreBtn.onclick = (e) => {
+                                        e.stopPropagation();
+                                        this.fetchMoreMatches(match.position);
+                                    };
+                                    trackInfo.appendChild(fetchMoreBtn);
+                                }
+                            }
+                            
+                            console.log(`⚠️ Mismatch detected for position ${match.position}: ${mismatch.issues.join(', ')}`);
+                        }
+                    }
                 });
                 
+                        // Add event listeners for match dropdowns
+                        this.setupMatchDropdowns();
+                        
+                        // Add fetch more buttons for tracks with multiple matches
+                        this.addFetchMoreButtons();
+                
                 console.log('✅ Finished updating tracks with matches');
+                
+                // Mark tracks as loaded
+                this.tracksLoaded = true;
+                
+                // Apply default filter (show only tracks needing verification) after a short delay
+                // to ensure DOM is fully updated
+                setTimeout(() => {
+                    this.showTracksNeedingVerification();
+                }, 100);
+            }
+
+            setupMatchDropdowns() {
+                const dropdowns = document.querySelectorAll('.match-dropdown');
+                console.log(`🔍 Setting up ${dropdowns.length} dropdown event listeners`);
+                dropdowns.forEach(dropdown => {
+                    this.setupDropdownEventListener(dropdown);
+                });
+            }
+
+            setupDropdownEventListener(dropdown) {
+                // Remove any existing event listeners to avoid duplicates
+                const newDropdown = dropdown.cloneNode(true);
+                dropdown.parentNode.replaceChild(newDropdown, dropdown);
+                
+                // Add the event listener to the new dropdown
+                newDropdown.addEventListener('change', (e) => {
+                    const position = parseInt(e.target.dataset.position);
+                    const matchIndex = parseInt(e.target.value);
+                    console.log(`🔄 Dropdown changed: position=${position}, matchIndex=${matchIndex}`);
+                    this.selectMatch(position, matchIndex);
+                });
+                
+                console.log(`✅ Set up event listener for dropdown at position ${newDropdown.dataset.position}`);
+            }
+
+            selectMatch(position, matchIndex) {
+                console.log(`🔍 selectMatch called: position=${position}, matchIndex=${matchIndex}`);
+                
+                // Find the match data for this position
+                const matchData = this.currentMatches?.find(m => m.position === position);
+                if (!matchData || !matchData.spotifyMatches) {
+                    console.warn(`❌ No match data found for position ${position}`);
+                    return;
+                }
+
+                console.log(`✅ Found match data for position ${position}, updating to match ${matchIndex}`);
+                
+                // Update the selected match
+                matchData.selectedMatch = matchIndex;
+                const selectedTrack = matchData.spotifyMatches[matchIndex];
+
+                // Update the album cover and track info
+                const albumCover = document.querySelector(`#track-element-${position} .album-cover`);
+                const trackTitle = document.querySelector(`#track-element-${position} .track-title`);
+                const trackArtist = document.querySelector(`#track-element-${position} .track-artist`);
+                const albumCoverContainer = document.querySelector(`#track-element-${position} .album-cover-container`);
+                
+                if (albumCover && selectedTrack) {
+                    albumCover.src = selectedTrack.album_artwork || '/placeholder-album.png';
+                    // Update background color when image loads
+                    albumCover.onload = () => {
+                        this.updateAlbumCoverBackground(albumCoverContainer, albumCover.src);
+                    };
+                }
+                if (trackTitle && selectedTrack) {
+                    trackTitle.textContent = selectedTrack.name;
+                    trackTitle.title = selectedTrack.name;
+                }
+                if (trackArtist && selectedTrack) {
+                    trackArtist.textContent = selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist;
+                    trackArtist.title = selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist;
+                }
+
+                // Re-check for mismatches with the new selection
+                const trackInfo = document.querySelector(`#track-element-${position} .chart-track-info`);
+                console.log(`🔍 Looking for trackInfo element: #track-element-${position} .chart-track-info`);
+                console.log(`🔍 Found trackInfo:`, trackInfo);
+                
+                if (trackInfo) {
+                    // Clear existing classes
+                    trackInfo.classList.remove('has-mismatch');
+                    
+                    // Remove existing tooltip
+                    const existingTooltip = trackInfo.querySelector('.mismatch-tooltip');
+                    if (existingTooltip) {
+                        existingTooltip.remove();
+                    }
+                    
+                    // Check for mismatches with new selection
+                    const mismatch = this.detectMismatch(
+                        matchData.title, 
+                        matchData.artist, 
+                        selectedTrack.name, 
+                        selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist
+                    );
+                    
+                    console.log(`🔍 Checking mismatch for position ${position}:`, {
+                        original: `${matchData.title} by ${matchData.artist}`,
+                        selected: `${selectedTrack.name} by ${selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist}`,
+                        hasMismatch: mismatch.hasMismatch,
+                        accepted: matchData.accepted,
+                        issues: mismatch.issues
+                    });
+                    
+                    // Always show accept button when an alternative is selected (unless already accepted)
+                    if (!matchData.accepted) {
+                        console.log(`🔍 Adding accept button for position ${position} (not yet accepted)`);
+                        
+                        // Remove any existing accept button first
+                        const existingAcceptBtn = trackInfo.querySelector('.accept-match-btn');
+                        if (existingAcceptBtn) {
+                            console.log(`🗑️ Removing existing accept button for position ${position}`);
+                            existingAcceptBtn.remove();
+                        }
+                        
+                        // Add accept button for any selection change
+                        const acceptBtn = document.createElement('button');
+                        acceptBtn.className = 'accept-match-btn';
+                        acceptBtn.textContent = 'Accept';
+                        acceptBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            this.acceptMatch(position);
+                        };
+                        trackInfo.appendChild(acceptBtn);
+                        
+                        console.log(`✅ Accept button added for position ${position} (alternative selected)`);
+                        
+                        // Add mismatch styling and tooltip if there's a mismatch
+                        if (mismatch.hasMismatch) {
+                            trackInfo.classList.add('has-mismatch');
+                            
+                            // Add tooltip with mismatch details
+                            const tooltip = document.createElement('div');
+                            tooltip.className = 'mismatch-tooltip';
+                            tooltip.innerHTML = `
+                                <strong>⚠️ Potential Mismatch:</strong><br>
+                                ${mismatch.issues.join('<br>')}
+                            `;
+                            trackInfo.appendChild(tooltip);
+                            
+                            console.log(`⚠️ Mismatch detected for position ${position}: ${mismatch.issues.join(', ')}`);
+                        }
+                    } else {
+                        console.log(`ℹ️ No accept button needed for position ${position} (already accepted)`);
+                    }
+                }
+
+                console.log(`🎵 Updated track ${position} to use match ${matchIndex}: ${selectedTrack.name}`);
+                
+                // Update the embedded player if it's currently showing this track
+                const playerContainer = document.getElementById('singlePlayer');
+                if (playerContainer && playerContainer.classList.contains('show')) {
+                    // Check if the player is currently showing this position
+                    const currentPlayerTrack = playerContainer.dataset.currentPosition;
+                    if (currentPlayerTrack && parseInt(currentPlayerTrack) === position) {
+                        console.log(`🔄 Updating embedded player to reflect new selection for position ${position}`);
+                        this.playTrack(position);
+                    }
+                }
+            }
+
+            toggleMatchSelector(position) {
+                const matchSelector = document.getElementById(`match-selector-${position}`);
+                if (!matchSelector) return;
+
+                // Toggle the expanded class
+                matchSelector.classList.toggle('expanded');
+                
+                console.log(`🔄 Toggled match selector for position ${position}`);
+            }
+
+            acceptMatch(position) {
+                // Find the match data for this position
+                const matchData = this.currentMatches?.find(m => m.position === position);
+                if (!matchData) return;
+
+                // Mark as accepted
+                matchData.accepted = true;
+
+                // Update the UI to remove the mismatch warning
+                const trackInfo = document.querySelector(`#track-element-${position} .chart-track-info`);
+                if (trackInfo) {
+                    trackInfo.classList.remove('has-mismatch');
+                    
+                    // Remove tooltip and accept button
+                    const tooltip = trackInfo.querySelector('.mismatch-tooltip');
+                    const acceptBtn = trackInfo.querySelector('.accept-match-btn');
+                    if (tooltip) tooltip.remove();
+                    if (acceptBtn) acceptBtn.remove();
+                }
+
+                // Check if we should hide this track from the filtered view
+                const showAllCheckbox = document.getElementById('showAllTracks');
+                if (!showAllCheckbox.checked) {
+                    // We're in "show only tracks needing verification" mode
+                    // Since this track no longer needs verification, hide it
+                    const trackElement = document.querySelector(`#track-element-${position}`);
+                    if (trackElement) {
+                        trackElement.style.display = 'none';
+                        console.log(`✅ Track ${position} accepted and hidden from verification view`);
+                    }
+                }
+
+                // Save to cache
+                this.saveAcceptedMatchToCache(position);
+
+                console.log(`✅ Accepted match for position ${position}: ${matchData.title} by ${matchData.artist}`);
+            }
+
+            saveAcceptedMatchToCache(position) {
+                if (!this.selectedYear) return;
+
+                try {
+                    const cacheKey = `accepted_matches_${this.selectedYear}`;
+                    let acceptedMatches = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                    
+                    // Find the match data
+                    const matchData = this.currentMatches?.find(m => m.position === position);
+                    if (matchData) {
+                        const selectedIndex = matchData.selectedMatch || 0;
+                        const selectedTrack = matchData.spotifyMatches[selectedIndex];
+                        
+                        // Store the accepted match info
+                        acceptedMatches[position] = {
+                            title: matchData.title,
+                            artist: matchData.artist,
+                            spotifyId: selectedTrack.id,
+                            spotifyUri: selectedTrack.uri,
+                            acceptedAt: new Date().toISOString()
+                        };
+                        
+                        localStorage.setItem(cacheKey, JSON.stringify(acceptedMatches));
+                        console.log(`💾 Saved accepted match for position ${position} to cache`);
+                    }
+                } catch (error) {
+                    console.error('Error saving accepted match to cache:', error);
+                }
+            }
+
+            loadAcceptedMatchesFromCache(year) {
+                try {
+                    const cacheKey = `accepted_matches_${year}`;
+                    const acceptedMatches = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                    
+                    // Apply accepted matches to current matches
+                    if (this.currentMatches) {
+                        this.currentMatches.forEach(match => {
+                            if (acceptedMatches[match.position]) {
+                                match.accepted = true;
+                            }
+                        });
+                    }
+                    
+                    console.log(`📂 Loaded ${Object.keys(acceptedMatches).length} accepted matches from cache for ${year}`);
+                    return acceptedMatches;
+                } catch (error) {
+                    console.error('Error loading accepted matches from cache:', error);
+                    return {};
+                }
+            }
+
+            addFetchMoreButtons() {
+                if (!this.currentMatches) return;
+                
+                this.currentMatches.forEach(match => {
+                    if (match.spotifyMatches && match.spotifyMatches.length > 1) {
+                        const trackInfo = document.querySelector(`#track-element-${match.position} .chart-track-info`);
+                        if (trackInfo && !trackInfo.querySelector('.fetch-more-btn')) {
+                            const fetchMoreBtn = document.createElement('button');
+                            fetchMoreBtn.className = 'fetch-more-btn';
+                            fetchMoreBtn.textContent = 'More';
+                            fetchMoreBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                this.fetchMoreMatches(match.position);
+                            };
+                            trackInfo.appendChild(fetchMoreBtn);
+                        }
+                    }
+                });
+            }
+
+            async fetchMoreMatches(position) {
+                const matchData = this.currentMatches?.find(m => m.position === position);
+                if (!matchData) return;
+
+                const fetchMoreBtn = document.querySelector(`#track-element-${position} .fetch-more-btn`);
+                if (fetchMoreBtn) {
+                    fetchMoreBtn.disabled = true;
+                    fetchMoreBtn.textContent = '...';
+                }
+
+                try {
+                    console.log(`🔍 Fetching more matches for position ${position}: ${matchData.title} by ${matchData.artist}`);
+                    console.log(`🔍 Search query: "${matchData.searchQuery}"`);
+                    console.log(`🔍 Match data:`, matchData);
+                    
+                    const requestBody = {
+                        position: position,
+                        title: matchData.title,
+                        artist: matchData.artist,
+                        searchQuery: matchData.searchQuery
+                    };
+                    console.log(`🔍 Request body:`, requestBody);
+                    
+                    const response = await fetch('/api/fetch-more-matches', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+                    
+                    console.log(`🔍 Response status: ${response.status}`);
+                    console.log(`🔍 Response ok: ${response.ok}`);
+
+                    const data = await response.json();
+                    console.log(`🔍 Response data:`, data);
+                    
+                    if (response.ok && data.additionalMatches) {
+                        // Add new matches to existing ones
+                        matchData.spotifyMatches.push(...data.additionalMatches);
+                        
+                        // Update the dropdown with new options
+                        this.updateMatchDropdown(position, matchData.spotifyMatches);
+                        
+                        console.log(`✅ Added ${data.additionalMatches.length} more matches for position ${position}`);
+                        this.showAlert(`Found ${data.additionalMatches.length} additional matches!`, 'success');
+                    } else {
+                        this.showAlert(data.error || 'Failed to fetch more matches', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error fetching more matches:', error);
+                    this.showAlert('Network error. Please try again.', 'error');
+                } finally {
+                    if (fetchMoreBtn) {
+                        fetchMoreBtn.disabled = false;
+                        fetchMoreBtn.textContent = 'More';
+                    }
+                }
+            }
+
+            updateMatchDropdown(position, allMatches) {
+                const dropdown = document.querySelector(`#match-selector-${position} select`);
+                if (!dropdown) return;
+
+                // Store current selection
+                const currentSelection = dropdown.value;
+                
+                // Clear and repopulate dropdown
+                dropdown.innerHTML = '';
+                
+                allMatches.forEach((match, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${match.name} - ${match.artist} (${match.popularity || 0}%)`;
+                    if (index.toString() === currentSelection) {
+                        option.selected = true;
+                    }
+                    dropdown.appendChild(option);
+                });
+                
+                console.log(`🔄 Updated dropdown for position ${position} with ${allMatches.length} total matches`);
+                
+                // Re-setup event listener for this specific dropdown
+                this.setupDropdownEventListener(dropdown);
+            }
+
+            populatePlaylistSelector() {
+                const selector = document.getElementById('playlistSelector');
+                if (!selector || !this.currentExistingPlaylists) return;
+
+                // Clear existing options except the first one
+                selector.innerHTML = '<option value="">Select a playlist...</option>';
+
+                // Add existing playlists
+                this.currentExistingPlaylists.forEach(playlist => {
+                    const option = document.createElement('option');
+                    option.value = playlist.id;
+                    option.textContent = `${playlist.name} (${playlist.tracks?.total || 0} tracks)`;
+                    selector.appendChild(option);
+                });
+
+                console.log(`📋 Populated playlist selector with ${this.currentExistingPlaylists.length} playlists`);
+            }
+
+            detectMismatch(originalTitle, originalArtist, spotifyTitle, spotifyArtist) {
+                const issues = [];
+                
+                // Normalize strings for comparison
+                const normalize = (str) => str.toLowerCase()
+                    .replace(/[^\w\s]/g, '') // Remove punctuation
+                    .replace(/\s+/g, ' ') // Normalize whitespace
+                    .trim();
+                
+                const normOriginalTitle = normalize(originalTitle);
+                const normOriginalArtist = normalize(originalArtist);
+                const normSpotifyTitle = normalize(spotifyTitle);
+                const normSpotifyArtist = normalize(spotifyArtist);
+                
+                // Check title similarity
+                const titleSimilarity = this.calculateStringSimilarity(normOriginalTitle, normSpotifyTitle);
+                if (titleSimilarity < 0.7) {
+                    issues.push(`Title mismatch: "${originalTitle}" vs "${spotifyTitle}"`);
+                }
+                
+                // Check artist similarity
+                const artistSimilarity = this.calculateStringSimilarity(normOriginalArtist, normSpotifyArtist);
+                if (artistSimilarity < 0.7) {
+                    issues.push(`Artist mismatch: "${originalArtist}" vs "${spotifyArtist}"`);
+                }
+                
+                // Check for obvious red flags
+                const spotifyLower = spotifyTitle.toLowerCase() + ' ' + spotifyArtist.toLowerCase();
+                if (spotifyLower.includes('cover') || spotifyLower.includes('tribute') || 
+                    spotifyLower.includes('karaoke') || spotifyLower.includes('instrumental') ||
+                    spotifyLower.includes('party') || spotifyLower.includes('remix')) {
+                    issues.push('Possible cover/remix version');
+                }
+                
+                return {
+                    hasMismatch: issues.length > 0,
+                    issues: issues,
+                    titleSimilarity: titleSimilarity,
+                    artistSimilarity: artistSimilarity
+                };
+            }
+
+            calculateStringSimilarity(str1, str2) {
+                if (str1 === str2) return 1.0;
+                if (str1.length === 0 || str2.length === 0) return 0.0;
+                
+                const longer = str1.length > str2.length ? str1 : str2;
+                const shorter = str1.length > str2.length ? str2 : str1;
+                
+                const editDistance = this.levenshteinDistance(longer, shorter);
+                return (longer.length - editDistance) / longer.length;
+            }
+
+            levenshteinDistance(str1, str2) {
+                const matrix = [];
+                
+                for (let i = 0; i <= str2.length; i++) {
+                    matrix[i] = [i];
+                }
+                
+                for (let j = 0; j <= str1.length; j++) {
+                    matrix[0][j] = j;
+                }
+                
+                for (let i = 1; i <= str2.length; i++) {
+                    for (let j = 1; j <= str1.length; j++) {
+                        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                            matrix[i][j] = matrix[i - 1][j - 1];
+                        } else {
+                            matrix[i][j] = Math.min(
+                                matrix[i - 1][j - 1] + 1,
+                                matrix[i][j - 1] + 1,
+                                matrix[i - 1][j] + 1
+                            );
+                        }
+                    }
+                }
+                
+                return matrix[str2.length][str1.length];
             }
 
             updateSelectedCount() {
@@ -1713,6 +2698,14 @@
                 const playlistName = document.getElementById('playlistName').value;
                 const isPublic = document.getElementById('isPublic').checked;
 
+                // Get all matched tracks from the UI (not just selected ones)
+                const allMatchedTracks = this.getAllMatchedTracks();
+                
+                if (allMatchedTracks.length === 0) {
+                    this.showAlert('No Spotify matches found. Please wait for tracks to load or try a different year.', 'error');
+                    return;
+                }
+
                 this.showLoading(true, 'Creating Spotify playlist...');
                 this.hidePlaylistResult();
 
@@ -1725,7 +2718,8 @@
                         body: JSON.stringify({
                             year: parseInt(year),
                             playlistName: playlistName || undefined,
-                            isPublic: isPublic
+                            isPublic: isPublic,
+                            matchedTracks: allMatchedTracks
                         })
                     });
 
@@ -1746,8 +2740,11 @@
             }
 
             async updatePlaylist() {
-                if (!this.selectedPlaylistId) {
-                    this.showAlert('Please select a playlist to update', 'error');
+                const playlistSelector = document.getElementById('playlistSelector');
+                const selectedPlaylistId = playlistSelector.value;
+                
+                if (!selectedPlaylistId) {
+                    this.showAlert('Please select a playlist to add tracks to', 'error');
                     return;
                 }
 
@@ -1760,7 +2757,7 @@
                 const year = document.getElementById('year').value;
                 const replaceAll = document.getElementById('replaceAllTracks').checked;
 
-                this.showLoading(true, 'Updating playlist...');
+                this.showLoading(true, 'Adding tracks to playlist...');
 
                 try {
                     const response = await fetch('/api/update-playlist', {
@@ -1769,7 +2766,7 @@
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            playlistId: this.selectedPlaylistId,
+                            playlistId: selectedPlaylistId,
                             year: year,
                             selectedTracks: selectedTracks,
                             replaceAll: replaceAll
@@ -1780,9 +2777,9 @@
 
                     if (response.ok) {
                         this.showPlaylistResult(data.playlist);
-                        this.showAlert(`Playlist updated successfully! Added ${data.playlist.tracksFound} tracks.`, 'success');
+                        this.showAlert(`Tracks added successfully! Added ${selectedTracks.length} tracks to playlist.`, 'success');
                     } else {
-                        this.showAlert(data.error || 'Failed to update playlist', 'error');
+                        this.showAlert(data.error || 'Failed to add tracks to playlist', 'error');
                     }
                 } catch (error) {
                     console.error('Update playlist error:', error);
@@ -1794,7 +2791,50 @@
 
             getSelectedTracks() {
                 const checkboxes = document.querySelectorAll('#chartList input[type="checkbox"]:checked');
-                return Array.from(checkboxes).map(checkbox => parseInt(checkbox.dataset.position));
+                const selectedTracks = [];
+                
+                checkboxes.forEach(checkbox => {
+                    const position = parseInt(checkbox.dataset.position);
+                    const matchData = this.currentMatches?.find(m => m.position === position);
+                    
+                    if (matchData && matchData.hasMatch && matchData.spotifyMatches && matchData.spotifyMatches.length > 0) {
+                        const selectedIndex = matchData.selectedMatch || 0;
+                        const selectedTrack = matchData.spotifyMatches[selectedIndex];
+                        
+                        selectedTracks.push({
+                            position: position,
+                            title: matchData.title,
+                            artist: matchData.artist,
+                            spotifyUri: selectedTrack.uri,
+                            spotifyId: selectedTrack.id
+                        });
+                    }
+                });
+                
+                return selectedTracks;
+            }
+
+            getAllMatchedTracks() {
+                if (!this.currentMatches) return [];
+                
+                const allMatchedTracks = [];
+                
+                this.currentMatches.forEach(matchData => {
+                    if (matchData.hasMatch && matchData.spotifyMatches && matchData.spotifyMatches.length > 0) {
+                        const selectedIndex = matchData.selectedMatch || 0;
+                        const selectedTrack = matchData.spotifyMatches[selectedIndex];
+                        
+                        allMatchedTracks.push({
+                            position: matchData.position,
+                            title: matchData.title,
+                            artist: matchData.artist,
+                            spotifyUri: selectedTrack.uri,
+                            spotifyId: selectedTrack.id
+                        });
+                    }
+                });
+                
+                return allMatchedTracks;
             }
 
             // Local storage caching methods
@@ -1906,11 +2946,226 @@
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }
             }
+
+            loadStateFromURL() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const year = urlParams.get('year');
+                const refresh = urlParams.get('refresh');
+                
+                if (year) {
+                    console.log(`📋 Loading state from URL: year=${year}, refresh=${refresh}`);
+                    
+                    // Set the year select
+                    const yearSelect = document.getElementById('year');
+                    if (yearSelect) {
+                        yearSelect.value = year;
+                        this.selectedYear = year;
+                        console.log(`✅ Set year select to: ${year}`);
+                    } else {
+                        console.error('❌ Year select element not found');
+                    }
+                    
+                    // Set refresh flag
+                    if (refresh === 'true') {
+                        this.forceRefresh = true;
+                        console.log(`✅ Set force refresh flag to true`);
+                    }
+                    
+                    // Auto-start chart loading if year is valid
+                    if (this.isValidYear(year)) {
+                        console.log(`🚀 Auto-starting chart loading for year ${year}`);
+                        setTimeout(() => {
+                            this.loadChartData(null, this.forceRefresh);
+                        }, 500); // Small delay to ensure UI is ready
+                    }
+                }
+            }
+
+            updateURL(year = null, refresh = null) {
+                const url = new URL(window.location);
+                
+                if (year !== null) {
+                    if (year) {
+                        url.searchParams.set('year', year);
+                    } else {
+                        url.searchParams.delete('year');
+                    }
+                }
+                
+                if (refresh !== null) {
+                    if (refresh) {
+                        url.searchParams.set('refresh', 'true');
+                    } else {
+                        url.searchParams.delete('refresh');
+                    }
+                }
+                
+                // Update URL without triggering page reload
+                window.history.replaceState({}, document.title, url.toString());
+                console.log(`🔗 Updated URL: ${url.toString()}`);
+            }
+
+            playTrack(position) {
+                const matchData = this.currentMatches?.find(m => m.position === position);
+                if (!matchData || !matchData.spotifyMatches) {
+                    console.warn(`No match data found for position ${position}`);
+                    return;
+                }
+
+                // Use the currently selected match (or default to 0)
+                const matchIndex = matchData.selectedMatch || 0;
+                const selectedTrack = matchData.spotifyMatches[matchIndex];
+                
+                if (!selectedTrack) {
+                    console.warn(`No track found for position ${position}, match ${matchIndex}`);
+                    return;
+                }
+                console.log(`🎵 Playing track: ${selectedTrack.name} by ${selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist}`);
+
+                // Update single player
+                const playerContainer = document.getElementById('singlePlayer');
+                const playerIframe = document.getElementById('playerIframe');
+
+                if (playerIframe) {
+                    playerIframe.src = `https://open.spotify.com/embed/track/${selectedTrack.id}?utm_source=generator`;
+                }
+
+                // Show the player
+                if (playerContainer) {
+                    playerContainer.classList.add('show');
+                    playerContainer.dataset.currentPosition = position;
+                    // Reset display style in case it was set to none
+                    playerContainer.style.display = '';
+                }
+            }
+
+            closePlayer() {
+                console.log('🔴 Close player button clicked - closePlayer method called');
+                const playerContainer = document.getElementById('singlePlayer');
+                if (playerContainer) {
+                    console.log('🔴 Removing show class from player container');
+                    playerContainer.classList.remove('show');
+                    // Also set display to none as backup
+                    playerContainer.style.display = 'none';
+                    console.log('🔴 Player should now be hidden');
+                } else {
+                    console.error('❌ Player container not found');
+                }
+            }
+
+            extractDominantColor(imageUrl, callback) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    
+                    ctx.drawImage(img, 0, 0);
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    
+                    let r = 0, g = 0, b = 0;
+                    let pixelCount = 0;
+                    
+                    // Sample every 10th pixel for performance
+                    for (let i = 0; i < data.length; i += 40) {
+                        r += data[i];
+                        g += data[i + 1];
+                        b += data[i + 2];
+                        pixelCount++;
+                    }
+                    
+                    r = Math.floor(r / pixelCount);
+                    g = Math.floor(g / pixelCount);
+                    b = Math.floor(b / pixelCount);
+                    
+                    // Darken the color by 30%
+                    r = Math.floor(r * 0.7);
+                    g = Math.floor(g * 0.7);
+                    b = Math.floor(b * 0.7);
+                    
+                    const color = `rgb(${r}, ${g}, ${b})`;
+                    callback(color);
+                };
+                img.onerror = function() {
+                    callback('#333333'); // Fallback dark color
+                };
+                img.src = imageUrl;
+            }
+
+            updateAlbumCoverBackground(container, imageUrl) {
+                this.extractDominantColor(imageUrl, (color) => {
+                    container.style.background = color;
+                });
+            }
+        }
+
+        // Global function for close button
+        function closePlayer() {
+            console.log('🔴 Close player button clicked - global function called');
+            const playerContainer = document.getElementById('singlePlayer');
+            console.log('🔴 Player container found:', playerContainer);
+            if (playerContainer) {
+                console.log('🔴 Current classes:', playerContainer.className);
+                console.log('🔴 Removing show class from player container');
+                playerContainer.classList.remove('show');
+                console.log('🔴 Player should now be hidden');
+                console.log('🔴 New classes:', playerContainer.className);
+                console.log('🔴 Computed display style:', window.getComputedStyle(playerContainer).display);
+            } else {
+                console.error('❌ Player container not found');
+            }
         }
 
         // Initialize the app when the page loads
         document.addEventListener('DOMContentLoaded', () => {
-            new UKChartsApp();
+            console.log('🚀 DOM Content Loaded, initializing app...');
+            const app = new UKChartsApp();
+            
+            // Make app globally accessible for onclick handlers
+            window.app = app;
+            console.log('✅ App made globally accessible');
+            
+            // Test if closePlayer function is available
+            console.log('🔍 Testing closePlayer function:', typeof closePlayer);
+            
+            // Load state from URL parameters
+            app.loadStateFromURL();
+            
+            // Add event listener for player close button
+            console.log('🔍 Looking for player close button...');
+            const playerCloseBtn = document.getElementById('playerClose');
+            console.log('🔍 Player close button element:', playerCloseBtn);
+            
+            if (playerCloseBtn) {
+                console.log('✅ Player close button found, adding event listener');
+                playerCloseBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔴 Close button clicked - event fired!');
+                    app.closePlayer();
+                });
+                console.log('✅ Event listener added successfully');
+            } else {
+                console.error('❌ Player close button not found - element does not exist');
+                // Let's also check if the player container exists
+                const playerContainer = document.getElementById('singlePlayer');
+                console.log('🔍 Player container element:', playerContainer);
+                
+                // Add event delegation as fallback
+                console.log('🔄 Adding event delegation fallback...');
+                document.addEventListener('click', (e) => {
+                    if (e.target && e.target.id === 'playerClose') {
+                        console.log('🔴 Close button clicked via event delegation!');
+                        e.preventDefault();
+                        e.stopPropagation();
+                        app.closePlayer();
+                    }
+                });
+                console.log('✅ Event delegation fallback added');
+            }
         });
     </script>
 </body>

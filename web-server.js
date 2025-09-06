@@ -233,7 +233,7 @@ app.get('/api/years', (req, res) => {
  */
 app.post('/api/create-playlist', async (req, res) => {
   try {
-    const { year, playlistName, isPublic = false } = req.body;
+    const { year, playlistName, isPublic = false, matchedTracks } = req.body;
     
     // Check authentication
     if (!req.session.spotifyAccessToken) {
@@ -251,19 +251,21 @@ app.post('/api/create-playlist', async (req, res) => {
     
     console.log(`🎵 Creating playlist for year ${year}...`);
     
-    // Scrape chart data
-    const chartData = await yearChartScraper.getYearChartData(year, 100);
-    
-    if (chartData.length === 0) {
-      return res.status(404).json({ error: `No chart data found for year ${year}` });
+    // Validate that matched tracks are provided
+    if (!matchedTracks || !Array.isArray(matchedTracks) || matchedTracks.length === 0) {
+      return res.status(400).json({ error: 'No matched tracks provided' });
     }
     
-    // Search for tracks on Spotify
-    const trackUris = await spotifyAPI.searchMultipleTracks(chartData);
+    // Extract track URIs from the matched tracks
+    const trackUris = matchedTracks
+      .filter(track => track.spotifyUri) // Only include tracks with Spotify URIs
+      .map(track => track.spotifyUri);
     
     if (trackUris.length === 0) {
-      return res.status(404).json({ error: 'No tracks found on Spotify for this year' });
+      return res.status(400).json({ error: 'No valid Spotify tracks found in matched tracks' });
     }
+    
+    console.log(`🎵 Creating playlist with ${trackUris.length} matched tracks`);
     
     // Create playlist
     const defaultName = `UK Top 100 - ${year}`;
@@ -289,7 +291,7 @@ app.post('/api/create-playlist', async (req, res) => {
         public: playlistInfo.public,
         year: year,
         tracksFound: trackUris.length,
-        tracksSearched: chartData.length
+        tracksSearched: matchedTracks.length
       }
     });
     
@@ -364,21 +366,24 @@ app.get('/api/check-playlist/:year', async (req, res) => {
       `${year} UK Charts`
     ];
     
-    const existingPlaylists = [];
-    
-    for (const query of searchQueries) {
-      try {
-        const playlists = await spotifyAPI.searchPlaylists(query, req.session.spotifyAccessToken);
-        if (playlists && playlists.length > 0) {
-          console.log(`Found ${playlists.length} playlists for query: "${query}"`);
-          existingPlaylists.push(...playlists);
-        }
-      } catch (error) {
-        console.warn(`Failed to search for "${query}":`, error.message);
-      }
+    // Get user's playlists instead of searching all public playlists
+    let userPlaylists = [];
+    try {
+      userPlaylists = await spotifyAPI.getUserPlaylists(req.session.spotifyAccessToken, 50);
+      console.log(`Found ${userPlaylists.length} user playlists`);
+    } catch (error) {
+      console.warn('Failed to get user playlists:', error.message);
     }
     
-    console.log(`Total playlists found: ${existingPlaylists.length}`);
+    // Filter user's playlists by the expected naming patterns
+    const existingPlaylists = userPlaylists.filter(playlist => {
+      const playlistName = playlist.name.toLowerCase();
+      return searchQueries.some(query => 
+        playlistName.includes(query.toLowerCase())
+      );
+    });
+    
+    console.log(`Found ${existingPlaylists.length} matching playlists in user's collection`);
     
     // Remove duplicates and filter by exact naming pattern
     const expectedPlaylistName = `UK Top 100 - ${year}`;
@@ -442,18 +447,23 @@ app.post('/api/match-tracks', async (req, res) => {
       
       for (const track of batch) {
         try {
-          const spotifyTrack = await spotifyAPI.searchTracks(
+          const spotifyTracks = await spotifyAPI.searchTracks(
             track.searchQuery, 
-            1 // limit
+            5 // limit - get up to 5 results
           );
+          
+          // Use smart selection to pick the best match
+          const bestMatchIndex = spotifyTracks.length > 0 ? 
+            spotifyAPI.selectBestMatch(spotifyTracks, track.title, track.artist) : null;
           
           matches.push({
             position: track.position,
             title: track.title,
             artist: track.artist,
             searchQuery: track.searchQuery,
-            spotifyMatch: spotifyTrack,
-            hasMatch: !!spotifyTrack
+            spotifyMatches: spotifyTracks,
+            selectedMatch: bestMatchIndex,
+            hasMatch: spotifyTracks.length > 0
           });
           
         } catch (error) {
@@ -463,7 +473,8 @@ app.post('/api/match-tracks', async (req, res) => {
             title: track.title,
             artist: track.artist,
             searchQuery: track.searchQuery,
-            spotifyMatch: null,
+            spotifyMatches: [],
+            selectedMatch: null,
             hasMatch: false,
             error: error.message
           });
@@ -509,35 +520,16 @@ app.post('/api/update-playlist', async (req, res) => {
     
     console.log(`🔄 Updating playlist ${playlistId} for year ${year}...`);
     
-    // Get chart data
-    const chartData = await yearChartScraper.getYearChartData(year, 100);
-    
-    // Filter tracks based on selection
-    const tracksToAdd = chartData.filter(track => 
-      selectedTracks.includes(track.position)
-    );
-    
-    if (tracksToAdd.length === 0) {
-      return res.status(400).json({ error: 'No tracks selected' });
-    }
-    
-    // Search for tracks on Spotify
-    const trackUris = [];
-    for (const track of tracksToAdd) {
-      try {
-        const spotifyTrack = await spotifyAPI.searchTrack(track.searchQuery, req.session.spotifyAccessToken);
-        if (spotifyTrack) {
-          trackUris.push(spotifyTrack.uri);
-          console.log(`🎵 Found: ${spotifyTrack.name} by ${spotifyTrack.artists[0].name}`);
-        }
-      } catch (error) {
-        console.warn(`Failed to find track: ${track.searchQuery}`);
-      }
-    }
+    // Extract track URIs from the selected tracks (already matched by frontend)
+    const trackUris = selectedTracks
+      .filter(track => track.spotifyUri) // Only include tracks with Spotify URIs
+      .map(track => track.spotifyUri);
     
     if (trackUris.length === 0) {
-      return res.status(400).json({ error: 'No tracks found on Spotify' });
+      return res.status(400).json({ error: 'No valid Spotify tracks found in selection' });
     }
+    
+    console.log(`🎵 Adding ${trackUris.length} tracks to playlist...`);
     
     // Clear existing tracks if replaceAll is true
     if (replaceAll) {
@@ -557,7 +549,7 @@ app.post('/api/update-playlist', async (req, res) => {
         name: playlist.name,
         url: playlist.external_urls.spotify,
         tracksFound: trackUris.length,
-        tracksSearched: tracksToAdd.length,
+        tracksSearched: selectedTracks.length,
         year: year,
         totalTracks: playlist.tracks.total
       }
@@ -605,6 +597,77 @@ app.get('/api/user-status', (req, res) => {
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
+});
+
+// 404 handler
+/**
+ * Update selected match for a track
+ */
+app.post('/api/select-match', async (req, res) => {
+  try {
+    const { position, matchIndex } = req.body;
+    
+    if (typeof position === 'undefined' || typeof matchIndex === 'undefined') {
+      return res.status(400).json({ error: 'Position and matchIndex are required' });
+    }
+
+    // Store the selection in session or return success
+    // For now, we'll just return success - the frontend will handle the selection
+    res.json({ 
+      success: true, 
+      position: position, 
+      selectedMatch: matchIndex 
+    });
+    
+  } catch (error) {
+    console.error('Error selecting match:', error);
+    res.status(500).json({ error: 'Failed to select match' });
+  }
+});
+
+// Fetch more matches for a specific track
+app.post('/api/fetch-more-matches', async (req, res) => {
+  try {
+    const { position, title, artist, searchQuery } = req.body;
+    
+    if (!req.session.spotifyAccessToken) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    if (!position || !title || !artist || !searchQuery) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    
+    console.log(`🔍 Fetching more matches for position ${position}: ${title} by ${artist}`);
+    console.log(`🔍 Search query: "${searchQuery}"`);
+    
+    // Search for more tracks with a higher limit
+    const additionalTracks = await spotifyAPI.searchTracks(searchQuery, 10);
+    console.log(`🔍 Found ${additionalTracks.length} additional tracks`);
+    
+    if (additionalTracks.length > 0) {
+      console.log(`✅ Found ${additionalTracks.length} additional matches for position ${position}`);
+      res.json({
+        success: true,
+        additionalMatches: additionalTracks,
+        position: position
+      });
+    } else {
+      console.log(`❌ No additional matches found for position ${position}`);
+      res.json({
+        success: true,
+        additionalMatches: [],
+        position: position
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error fetching more matches:', error);
+    res.status(500).json({
+      error: 'Failed to fetch more matches',
+      details: error.message
+    });
+  }
 });
 
 // 404 handler
