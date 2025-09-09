@@ -11,6 +11,73 @@ export class SpotifyAPI {
     this.accessToken = null;
     this.refreshToken = null;
     this.userId = null;
+    this.rateLimitDelay = 0; // Track current rate limit delay
+  }
+
+  /**
+   * Handle rate limiting with exponential backoff
+   * @param {number} retryAfter - Seconds to wait from Retry-After header
+   * @param {number} attempt - Current attempt number (1-based)
+   * @returns {Promise<void>} Promise that resolves after waiting
+   */
+  async handleRateLimit(retryAfter, attempt = 1) {
+    const maxAttempts = 5;
+    const baseDelay = retryAfter || Math.pow(2, attempt) * 1000; // Exponential backoff starting at 2s
+    
+    if (attempt > maxAttempts) {
+      throw new Error(`Rate limit exceeded after ${maxAttempts} attempts`);
+    }
+
+    const delay = Math.min(baseDelay, 30000); // Cap at 30 seconds
+    console.log(`⏳ Rate limit hit (attempt ${attempt}/${maxAttempts}). Waiting ${delay}ms before retry...`);
+    
+    this.rateLimitDelay = delay;
+    await new Promise(resolve => setTimeout(resolve, delay));
+    this.rateLimitDelay = 0;
+  }
+
+  /**
+   * Make a request with rate limit handling and retry logic
+   * @param {Function} requestFn - Function that makes the actual request
+   * @param {number} maxRetries - Maximum number of retries
+   * @returns {Promise<any>} Request response
+   */
+  async makeRequestWithRetry(requestFn, maxRetries = 5) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await requestFn();
+        return response;
+      } catch (error) {
+        lastError = error;
+        
+        if (error.response?.status === 429) {
+          const retryAfter = error.response.headers['retry-after'];
+          const retryAfterSeconds = retryAfter ? parseInt(retryAfter) : null;
+          
+          console.log(`🚫 Rate limit hit (429). Retry-After: ${retryAfterSeconds}s, attempt ${attempt}/${maxRetries}`);
+          
+          if (attempt < maxRetries) {
+            await this.handleRateLimit(retryAfterSeconds * 1000, attempt);
+            continue; // Retry the request
+          }
+        } else if (error.response?.status >= 500) {
+          // Server error - retry with exponential backoff
+          console.log(`🔧 Server error (${error.response.status}), attempt ${attempt}/${maxRetries}`);
+          
+          if (attempt < maxRetries) {
+            await this.handleRateLimit(null, attempt);
+            continue; // Retry the request
+          }
+        }
+        
+        // For other errors or max retries reached, throw the error
+        throw error;
+      }
+    }
+    
+    throw lastError;
   }
 
   /**
@@ -131,6 +198,59 @@ export class SpotifyAPI {
   }
 
   /**
+   * Enhance search query to exclude common alternative versions
+   * @param {string} query - Original search query
+   * @returns {string} Enhanced query with exclusions
+   */
+  enhanceSearchQuery(query) {
+    // Extract track name from the query to check if it naturally contains exclusion terms
+    const trackMatch = query.match(/track:"([^"]*)"/);
+    const trackName = trackMatch ? trackMatch[1].toLowerCase() : '';
+    
+    // Only add exclusions if the track name doesn't naturally contain those terms
+    const exclusions = [];
+    
+    // Live versions
+    if (!trackName.includes('live') && !trackName.includes('concert')) {
+      exclusions.push('NOT live', 'NOT concert');
+    }
+    
+    // Acoustic versions
+    if (!trackName.includes('acoustic') && !trackName.includes('unplugged')) {
+      exclusions.push('NOT acoustic', 'NOT unplugged');
+    }
+    
+    // Remixes and versions
+    if (!trackName.includes('remix') && !trackName.includes('mix') && 
+        !trackName.includes('version') && !trackName.includes('edit')) {
+      exclusions.push('NOT remix', 'NOT mix', 'NOT version', 'NOT edit');
+    }
+    
+    // Radio and extended versions
+    if (!trackName.includes('radio') && !trackName.includes('extended') && 
+        !trackName.includes('club')) {
+      exclusions.push('NOT radio', 'NOT extended', 'NOT club');
+    }
+    
+    // Party versions
+    if (!trackName.includes('party')) {
+      exclusions.push('NOT party');
+    }
+    
+    // Covers and tributes
+    if (!trackName.includes('cover') && !trackName.includes('tribute')) {
+      exclusions.push('NOT cover', 'NOT tribute');
+    }
+    
+    // Karaoke and instrumental
+    if (!trackName.includes('karaoke') && !trackName.includes('instrumental')) {
+      exclusions.push('NOT karaoke', 'NOT instrumental');
+    }
+    
+    return exclusions.length > 0 ? `${query} ${exclusions.join(' ')}` : query;
+  }
+
+  /**
    * Search for tracks on Spotify
    * @param {string} query - Search query
    * @param {number} limit - Number of results to return
@@ -138,20 +258,26 @@ export class SpotifyAPI {
    */
   async searchTracks(query, limit = 5) {
     try {
-      const response = await axios.get(`${this.baseURL}/search`, {
-        headers: this.getHeaders(),
-        params: {
-          q: query,
-          type: 'track',
-          limit: limit
-        }
+      // Enhance query to exclude common alternative versions
+      const enhancedQuery = this.enhanceSearchQuery(query);
+      
+      // Try enhanced query first with retry logic
+      const enhancedResponse = await this.makeRequestWithRetry(async () => {
+        return await axios.get(`${this.baseURL}/search`, {
+          headers: this.getHeaders(),
+          params: {
+            q: enhancedQuery,
+            type: 'track',
+            limit: limit
+          }
+        });
       });
 
-      let tracks = response.data.tracks.items;
+      let tracks = enhancedResponse.data.tracks.items;
       
       // If we have good results, return them
       if (tracks.length > 0) {
-        console.log(`🎵 Found ${tracks.length} results for: ${query}`);
+        console.log(`🎵 Found ${tracks.length} results for: ${enhancedQuery}`);
         return tracks.map(track => ({
           id: track.id,
           uri: track.uri,
@@ -170,22 +296,23 @@ export class SpotifyAPI {
         }));
       }
 
-      // If no results, try a simpler search without quotes
-      console.log(`🔄 No results for structured query, trying simpler search...`);
-      const simpleQuery = query.replace(/track:"([^"]*)" artist:"([^"]*)"/, '$1 $2');
+      // If no results with enhanced query, try original query as fallback with retry logic
+      console.log(`🔄 No results with enhanced query, trying original query: ${query}`);
       
-      const fallbackResponse = await axios.get(`${this.baseURL}/search`, {
-        headers: this.getHeaders(),
-        params: {
-          q: simpleQuery,
-          type: 'track',
-          limit: limit
-        }
+      const fallbackResponse = await this.makeRequestWithRetry(async () => {
+        return await axios.get(`${this.baseURL}/search`, {
+          headers: this.getHeaders(),
+          params: {
+            q: query,
+            type: 'track',
+            limit: limit
+          }
+        });
       });
 
       tracks = fallbackResponse.data.tracks.items;
       if (tracks.length > 0) {
-        console.log(`🎵 Found ${tracks.length} results for simple query: ${simpleQuery}`);
+        console.log(`🎵 Found ${tracks.length} results with fallback search`);
         return tracks.map(track => ({
           id: track.id,
           uri: track.uri,
@@ -204,7 +331,7 @@ export class SpotifyAPI {
         }));
       }
 
-      console.log(`❌ No results found for: ${query} or ${simpleQuery}`);
+      console.log(`❌ No results found for: ${query}`);
       return [];
     } catch (error) {
       console.error(`❌ Error searching for "${query}":`, error.response?.data || error.message);
@@ -260,21 +387,52 @@ export class SpotifyAPI {
         }
       }
 
-      // Penalty for obvious covers/alternatives (heuristic)
+      // Heavy penalties for alternative versions (heuristic)
       const titleLower = track.name.toLowerCase();
       const artistLower = track.artist.toLowerCase();
+      const albumLower = track.album?.toLowerCase() || '';
       
-      // Penalty for "cover", "tribute", "karaoke", "instrumental"
+      // Heavy penalty for live versions
+      if (titleLower.includes('live') || titleLower.includes('concert') || 
+          titleLower.includes('acoustic') || titleLower.includes('unplugged') ||
+          albumLower.includes('live') || albumLower.includes('concert') ||
+          albumLower.includes('acoustic') || albumLower.includes('unplugged')) {
+        score -= 50;
+      }
+      
+      // Heavy penalty for remixes and alternative versions
+      if (titleLower.includes('remix') || titleLower.includes('mix') || 
+          titleLower.includes('version') || titleLower.includes('edit') ||
+          titleLower.includes('radio') || titleLower.includes('single') ||
+          titleLower.includes('extended') || titleLower.includes('club')) {
+        score -= 40;
+      }
+      
+      // Heavy penalty for covers, tributes, and karaoke
       if (titleLower.includes('cover') || titleLower.includes('tribute') || 
           titleLower.includes('karaoke') || titleLower.includes('instrumental') ||
           artistLower.includes('cover') || artistLower.includes('tribute')) {
-        score -= 30;
+        score -= 50;
       }
 
-      // Penalty for "party", "dance", "remix" versions
+      // Penalty for party/dance versions
       if (titleLower.includes('party') || titleLower.includes('dance') || 
-          titleLower.includes('remix') || titleLower.includes('mix')) {
-        score -= 20;
+          titleLower.includes('club') || titleLower.includes('night')) {
+        score -= 30;
+      }
+      
+      // Penalty for compilation albums (prefer original releases)
+      if (albumLower.includes('greatest hits') || albumLower.includes('best of') ||
+          albumLower.includes('collection') || albumLower.includes('anthology') ||
+          albumLower.includes('compilation') || albumLower.includes('hits')) {
+        score -= 25;
+      }
+      
+      // Bonus for original studio albums
+      if (track.album_type === 'album' && !albumLower.includes('greatest') && 
+          !albumLower.includes('best of') && !albumLower.includes('collection') &&
+          !albumLower.includes('anthology') && !albumLower.includes('compilation')) {
+        score += 15;
       }
 
       console.log(`  ${index}: "${track.name}" by ${track.artist} - Score: ${score.toFixed(1)} (Popularity: ${track.popularity})`);
@@ -478,12 +636,14 @@ export class SpotifyAPI {
         { 'Authorization': `Bearer ${accessToken}` } : 
         this.getHeaders();
         
-      const response = await axios.get(`${this.baseURL}/me/playlists`, {
-        headers,
-        params: {
-          limit: limit,
-          offset: offset
-        }
+      const response = await this.makeRequestWithRetry(async () => {
+        return await axios.get(`${this.baseURL}/me/playlists`, {
+          headers,
+          params: {
+            limit: limit,
+            offset: offset
+          }
+        });
       });
 
       return response.data.items;
@@ -605,5 +765,49 @@ export class SpotifyAPI {
    */
   setUserId(userId) {
     this.userId = userId;
+  }
+
+  /**
+   * Get track details by Spotify track ID
+   * @param {string} trackId - Spotify track ID
+   * @param {string} accessToken - Optional access token
+   * @returns {Object|null} Track details or null if not found
+   */
+  async getTrackById(trackId, accessToken = null) {
+    try {
+      const headers = accessToken ? 
+        { 'Authorization': `Bearer ${accessToken}` } : 
+        this.getHeaders();
+        
+      console.log(`🔍 Getting track details for ID: ${trackId}`);
+
+      const response = await this.makeRequestWithRetry(async () => {
+        return await axios.get(`${this.baseURL}/tracks/${trackId}`, {
+          headers
+        });
+      });
+
+      const track = response.data;
+      
+      return {
+        id: track.id,
+        uri: track.uri,
+        name: track.name,
+        artist: track.artists[0].name,
+        artists: track.artists.map(a => a.name),
+        album: track.album.name,
+        album_artwork: track.album.images?.[0]?.url,
+        duration_ms: track.duration_ms,
+        preview_url: track.preview_url,
+        external_urls: track.external_urls,
+        popularity: track.popularity,
+        explicit: track.explicit,
+        album_release_date: track.album.release_date,
+        album_type: track.album.album_type
+      };
+    } catch (error) {
+      console.error(`❌ Error getting track by ID ${trackId}:`, error.response?.data || error.message);
+      return null;
+    }
   }
 }

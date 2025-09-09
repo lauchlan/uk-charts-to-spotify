@@ -907,6 +907,10 @@
             border-left: 2px solid #ffc107;
             text-align: center;
             flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
         }
 
         .no-match-text {
@@ -921,6 +925,40 @@
             font-size: 0.8em;
             display: block;
             margin-top: 4px;
+        }
+
+        .no-match-actions {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .retry-search-btn, .paste-url-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 9px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .paste-url-btn {
+            background: #28a745;
+        }
+
+        .paste-url-btn:hover {
+            background: #218838;
+        }
+
+        .retry-search-btn:hover {
+            background: #0056b3;
+        }
+
+        .retry-search-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
         }
 
         .spotify-loading {
@@ -1205,11 +1243,11 @@
                     </div>
                     <div class="info-section">
                         <label class="filter-toggle">
-                            <input type="checkbox" id="showAllTracks">
+                            <input type="checkbox" id="showAllTracks" checked>
                             <span class="toggle-slider"></span>
                             <span class="toggle-label">Show all</span>
                         </label>
-                        <span class="filter-info" id="filterInfo">Showing tracks needing verification</span>
+                        <span class="filter-info" id="filterInfo">Showing all tracks</span>
                     </div>
                     <div class="info-section">
                         <span class="info-label">Year:</span>
@@ -1984,6 +2022,10 @@
                             <div class="spotify-no-match">
                                 <span class="no-match-text">No Spotify match found</span>
                                 ${match.error ? `<span class="error-text">(${match.error})</span>` : ''}
+                                <div class="no-match-actions">
+                                    <button class="retry-search-btn" onclick="app.retrySpotifySearch(${match.position})">Retry</button>
+                                    <button class="paste-url-btn" onclick="app.showPasteUrlDialog(${match.position})">Paste URL</button>
+                                </div>
                             </div>
                         `;
                     }
@@ -2100,15 +2142,19 @@
                                 </div>
                             </div>
                         `;
-                    } else {
-                        console.log(`❌ No match for track ${match.position}: ${match.error || 'No match found'}`);
-                        spotifyInfo = `
-                            <div class="spotify-no-match">
-                                <span class="no-match-text">No Spotify match found</span>
-                                ${match.error ? `<span class="error-text">(${match.error})</span>` : ''}
+                } else {
+                    console.log(`❌ No match for track ${match.position}: ${match.error || 'No match found'}`);
+                    spotifyInfo = `
+                        <div class="spotify-no-match">
+                            <span class="no-match-text">No Spotify match found</span>
+                            ${match.error ? `<span class="error-text">(${match.error})</span>` : ''}
+                            <div class="no-match-actions">
+                                <button class="retry-search-btn" onclick="app.retrySpotifySearch(${match.position})">Retry</button>
+                                <button class="paste-url-btn" onclick="app.showPasteUrlDialog(${match.position})">Paste URL</button>
                             </div>
-                        `;
-                    }
+                        </div>
+                    `;
+                }
 
                     spotifyContainer.outerHTML = spotifyInfo;
                     
@@ -2195,10 +2241,10 @@
                 // Mark tracks as loaded
                 this.tracksLoaded = true;
                 
-                // Apply default filter (show only tracks needing verification) after a short delay
+                // Apply default filter (show all tracks) after a short delay
                 // to ensure DOM is fully updated
                 setTimeout(() => {
-                    this.showTracksNeedingVerification();
+                    this.showAllTracks();
                 }, 100);
             }
 
@@ -2530,6 +2576,329 @@
                         fetchMoreBtn.textContent = 'More';
                     }
                 }
+            }
+
+            async retrySpotifySearch(position) {
+                const matchData = this.currentMatches?.find(m => m.position === position);
+                if (!matchData) {
+                    console.warn(`No match data found for position ${position}`);
+                    return;
+                }
+
+                const retryBtn = document.querySelector(`#track-element-${position} .retry-search-btn`);
+                if (retryBtn) {
+                    retryBtn.disabled = true;
+                    retryBtn.textContent = 'Searching...';
+                }
+
+                try {
+                    console.log(`🔄 Retrying Spotify search for position ${position}: ${matchData.title} by ${matchData.artist}`);
+                    
+                    const response = await fetch('/api/match-tracks', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            tracks: [{
+                                position: matchData.position,
+                                title: matchData.title,
+                                artist: matchData.artist,
+                                searchQuery: matchData.searchQuery
+                            }]
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok && data.matches && data.matches.length > 0) {
+                        const newMatch = data.matches[0];
+                        
+                        // Update the match data
+                        matchData.spotifyMatches = newMatch.spotifyMatches || [];
+                        matchData.hasMatch = newMatch.hasMatch || false;
+                        matchData.error = newMatch.error || null;
+                        matchData.selectedMatch = 0; // Reset to first match
+                        
+                        // Update the cache with the new match data
+                        this.updateCacheWithRetryResult(matchData);
+                        
+                        // Update just this specific track without affecting the filter state
+                        this.updateSingleTrack(matchData);
+                        
+                        console.log(`✅ Retry successful for position ${position}`);
+                        this.showAlert(`Found ${newMatch.spotifyMatches?.length || 0} matches!`, 'success');
+                    } else {
+                        console.log(`❌ Retry failed for position ${position}: ${data.error || 'No matches found'}`);
+                        this.showAlert(data.error || 'No matches found on retry', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error retrying Spotify search:', error);
+                    this.showAlert('Network error. Please try again.', 'error');
+                } finally {
+                    if (retryBtn) {
+                        retryBtn.disabled = false;
+                        retryBtn.textContent = 'Retry';
+                    }
+                }
+            }
+
+            updateCacheWithRetryResult(updatedMatchData) {
+                try {
+                    const year = this.selectedYear;
+                    const cacheKey = `spotify_matches_${year}`;
+                    
+                    // Get current cached matches
+                    const cachedMatches = localStorage.getItem(cacheKey);
+                    if (cachedMatches) {
+                        const matches = JSON.parse(cachedMatches);
+                        
+                        // Find and update the specific match in the cache
+                        const matchIndex = matches.findIndex(m => m.position === updatedMatchData.position);
+                        if (matchIndex !== -1) {
+                            // Update the cached match with new data
+                            matches[matchIndex] = {
+                                ...matches[matchIndex],
+                                spotifyMatches: updatedMatchData.spotifyMatches,
+                                hasMatch: updatedMatchData.hasMatch,
+                                error: updatedMatchData.error,
+                                selectedMatch: updatedMatchData.selectedMatch
+                            };
+                            
+                            // Save updated cache
+                            localStorage.setItem(cacheKey, JSON.stringify(matches));
+                            console.log(`💾 Updated cache for position ${updatedMatchData.position} in ${year} chart`);
+                        } else {
+                            console.warn(`⚠️ Could not find position ${updatedMatchData.position} in cache to update`);
+                        }
+                    } else {
+                        console.warn(`⚠️ No cache found for ${year} to update with retry result`);
+                    }
+                } catch (error) {
+                    console.error('Error updating cache with retry result:', error);
+                }
+            }
+
+            updateSingleTrack(match) {
+                console.log(`🔄 Updating single track ${match.position}`);
+                
+                const trackElement = document.getElementById(`track-element-${match.position}`);
+                if (!trackElement) {
+                    console.warn(`❌ Track element not found for position ${match.position}`);
+                    return;
+                }
+
+                const spotifyContainer = trackElement.querySelector('.spotify-loading, .spotify-embed-container, .spotify-no-match');
+                if (!spotifyContainer) {
+                    console.warn(`❌ Spotify container not found for position ${match.position}`);
+                    return;
+                }
+
+                let spotifyInfo = '';
+                if (match.hasMatch && match.spotifyMatches && match.spotifyMatches.length > 0) {
+                    const selectedIndex = match.selectedMatch || 0;
+                    const selectedTrack = match.spotifyMatches[selectedIndex];
+                    console.log(`✅ Updating track ${match.position} with match: ${selectedTrack.name}`);
+                    
+                    // Show match selector if there are multiple matches (hidden by default)
+                    let matchSelector = '';
+                    if (match.spotifyMatches.length > 1) {
+                        matchSelector = `
+                            <div class="match-selector" id="match-selector-${match.position}">
+                                <select class="match-dropdown" data-position="${match.position}">
+                                    ${match.spotifyMatches.map((track, index) => 
+                                        `<option value="${index}" ${index === selectedIndex ? 'selected' : ''}>
+                                            ${track.name} - ${track.artist} (${track.album})
+                                        </option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                        `;
+                    }
+                    
+                    spotifyInfo = `
+                        ${matchSelector}
+                        <div class="album-cover-container" onclick="app.playTrack(${match.position})">
+                            <img class="album-cover" src="${selectedTrack.album_artwork || '/placeholder-album.png'}" alt="Album Cover" onload="app.updateAlbumCoverBackground(this.parentElement, this.src)">
+                            <div class="track-info">
+                                <div class="track-title" title="${selectedTrack.name}">${selectedTrack.name}</div>
+                                <div class="track-artist" title="${selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist}">${selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist}</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    console.log(`❌ No match for track ${match.position}: ${match.error || 'No match found'}`);
+                    spotifyInfo = `
+                        <div class="spotify-no-match">
+                            <span class="no-match-text">No Spotify match found</span>
+                            ${match.error ? `<span class="error-text">(${match.error})</span>` : ''}
+                            <div class="no-match-actions">
+                                <button class="retry-search-btn" onclick="app.retrySpotifySearch(${match.position})">Retry</button>
+                                <button class="paste-url-btn" onclick="app.showPasteUrlDialog(${match.position})">Paste URL</button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                spotifyContainer.outerHTML = spotifyInfo;
+                
+                // Update track info to show multiple matches indicator and mismatch warnings
+                const trackInfo = trackElement.querySelector('.chart-track-info');
+                
+                // Clear existing classes
+                trackInfo.classList.remove('has-multiple-matches', 'has-mismatch');
+                
+                // Add multiple matches indicator
+                if (match.hasMatch && match.spotifyMatches && match.spotifyMatches.length > 1) {
+                    trackInfo.classList.add('has-multiple-matches');
+                }
+                
+                // Check for mismatches
+                if (match.hasMatch && match.spotifyMatches && match.spotifyMatches.length > 0) {
+                    const selectedIndex = match.selectedMatch || 0;
+                    const selectedTrack = match.spotifyMatches[selectedIndex];
+                    
+                    const mismatch = this.detectMismatch(
+                        match.title, 
+                        match.artist, 
+                        selectedTrack.name, 
+                        selectedTrack.artists ? selectedTrack.artists.join(', ') : selectedTrack.artist
+                    );
+                    
+                    if (mismatch.hasMismatch && !match.accepted) {
+                        trackInfo.classList.add('has-mismatch');
+                        
+                        // Add tooltip with mismatch details
+                        let tooltip = trackInfo.querySelector('.mismatch-tooltip');
+                        if (!tooltip) {
+                            tooltip = document.createElement('div');
+                            tooltip.className = 'mismatch-tooltip';
+                            trackInfo.appendChild(tooltip);
+                        }
+                        
+                        tooltip.innerHTML = `
+                            <strong>⚠️ Potential Mismatch:</strong><br>
+                            ${mismatch.issues.join('<br>')}
+                        `;
+                        
+                        // Add accept button
+                        let acceptBtn = trackInfo.querySelector('.accept-match-btn');
+                        if (!acceptBtn) {
+                            acceptBtn = document.createElement('button');
+                            acceptBtn.className = 'accept-match-btn';
+                            acceptBtn.textContent = 'Accept';
+                            acceptBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                this.acceptMatch(match.position);
+                            };
+                            trackInfo.appendChild(acceptBtn);
+                        }
+                        
+                        // Add fetch more button if there are multiple matches
+                        if (match.spotifyMatches && match.spotifyMatches.length > 1) {
+                            let fetchMoreBtn = trackInfo.querySelector('.fetch-more-btn');
+                            if (!fetchMoreBtn) {
+                                fetchMoreBtn = document.createElement('button');
+                                fetchMoreBtn.className = 'fetch-more-btn';
+                                fetchMoreBtn.textContent = 'More';
+                                fetchMoreBtn.onclick = (e) => {
+                                    e.stopPropagation();
+                                    this.fetchMoreMatches(match.position);
+                                };
+                                trackInfo.appendChild(fetchMoreBtn);
+                            }
+                        }
+                        
+                        console.log(`⚠️ Mismatch detected for position ${match.position}: ${mismatch.issues.join(', ')}`);
+                    }
+                }
+                
+                // Set up event listeners for this specific track
+                this.setupDropdownEventListener(document.querySelector(`#match-selector-${match.position} select`));
+            }
+
+            showPasteUrlDialog(position) {
+                const url = prompt('Paste the Spotify track URL:', '');
+                if (url && url.trim()) {
+                    this.addTrackFromUrl(position, url.trim());
+                }
+            }
+
+            async addTrackFromUrl(position, url) {
+                try {
+                    // Extract track ID from various Spotify URL formats
+                    const trackId = this.extractTrackIdFromUrl(url);
+                    if (!trackId) {
+                        this.showAlert('Invalid Spotify URL format. Please use a track URL like: https://open.spotify.com/track/...', 'error');
+                        return;
+                    }
+
+                    console.log(`🔗 Adding track from URL for position ${position}: ${trackId}`);
+
+                    // Get track details from Spotify API
+                    const response = await fetch('/api/get-track-by-id', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ trackId: trackId })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok && data.track) {
+                        const track = data.track;
+                        
+                        // Find the match data for this position
+                        const matchData = this.currentMatches?.find(m => m.position === position);
+                        if (!matchData) {
+                            console.warn(`No match data found for position ${position}`);
+                            return;
+                        }
+
+                        // Update the match data with the new track
+                        matchData.spotifyMatches = [track];
+                        matchData.hasMatch = true;
+                        matchData.error = null;
+                        matchData.selectedMatch = 0;
+
+                        // Update the cache with the new track data
+                        this.updateCacheWithRetryResult(matchData);
+
+                        // Update the UI
+                        this.updateSingleTrack(matchData);
+                        
+                        console.log(`✅ Successfully added track from URL: ${track.name}`);
+                        this.showAlert(`Added track: ${track.name} by ${track.artist}`, 'success');
+                    } else {
+                        console.log(`❌ Failed to get track details: ${data.error || 'Unknown error'}`);
+                        this.showAlert(data.error || 'Failed to get track details from Spotify', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error adding track from URL:', error);
+                    this.showAlert('Network error. Please try again.', 'error');
+                }
+            }
+
+            extractTrackIdFromUrl(url) {
+                // Handle various Spotify URL formats:
+                // https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh
+                // https://open.spotify.com/track/4iV5W9uYEdYUVa79Axb7Rh?si=...
+                // spotify:track:4iV5W9uYEdYUVa79Axb7Rh
+                
+                const patterns = [
+                    /open\.spotify\.com\/track\/([a-zA-Z0-9]+)/,
+                    /spotify:track:([a-zA-Z0-9]+)/
+                ];
+
+                for (const pattern of patterns) {
+                    const match = url.match(pattern);
+                    if (match) {
+                        return match[1];
+                    }
+                }
+
+                return null;
             }
 
             updateMatchDropdown(position, allMatches) {

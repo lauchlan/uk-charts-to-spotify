@@ -625,6 +625,32 @@ app.post('/api/select-match', async (req, res) => {
   }
 });
 
+// Get track details by Spotify track ID
+app.post('/api/get-track-by-id', async (req, res) => {
+    try {
+        const { trackId } = req.body;
+        
+        if (!trackId) {
+            return res.status(400).json({ error: 'Track ID is required' });
+        }
+
+        console.log(`🔍 Getting track details for ID: ${trackId}`);
+
+        const track = await spotifyAPI.getTrackById(trackId);
+        
+        if (track) {
+            console.log(`✅ Found track: ${track.name} by ${track.artist}`);
+            res.json({ track });
+        } else {
+            console.log(`❌ Track not found for ID: ${trackId}`);
+            res.status(404).json({ error: 'Track not found' });
+        }
+    } catch (error) {
+        console.error('Error getting track by ID:', error);
+        res.status(500).json({ error: 'Failed to get track details' });
+    }
+});
+
 // Fetch more matches for a specific track
 app.post('/api/fetch-more-matches', async (req, res) => {
   try {

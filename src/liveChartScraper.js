@@ -33,6 +33,15 @@ export class LiveChartScraper {
   }
 
   /**
+   * Clean artist name for Spotify search by removing "FT" characters but keeping featured artists
+   * @param {string} artist - Original artist name
+   * @returns {string} - Cleaned artist name for search
+   */
+  cleanArtistForSearch(artist) {
+    return artist.replace(/\s+FT\s+/gi, ' ').trim();
+  }
+
+  /**
    * Get the URL for a specific year's end-of-year chart
    * @param {number} year - The year to get the chart for
    * @returns {string} URL for the year's chart
@@ -135,11 +144,12 @@ export class LiveChartScraper {
                 for (let i = 0; i < Math.min(items.length, limit); i++) {
                   const item = items[i];
                   if (item.title && item.artist) {
+                    const cleanArtist = this.cleanArtistForSearch(item.artist.trim());
                     tracks.push({
                       position: i + 1,
                       title: item.title.trim().toUpperCase(),
                       artist: item.artist.trim().toUpperCase(),
-                      searchQuery: `track:"${item.title.trim()}" artist:"${item.artist.trim()}"`
+                      searchQuery: `track:"${item.title.trim()}" artist:"${cleanArtist}"`
                     });
                   }
                 }
@@ -226,11 +236,12 @@ export class LiveChartScraper {
           const artist = match[3].trim().toUpperCase();
           
           if (position && title && artist && position <= limit) {
+            const cleanArtist = this.cleanArtistForSearch(artist);
             tracks.push({
               position,
               title,
               artist,
-              searchQuery: `track:"${title}" artist:"${artist}"`
+              searchQuery: `track:"${title}" artist:"${cleanArtist}"`
             });
           }
         }
@@ -315,11 +326,12 @@ export class LiveChartScraper {
       }
       
       if (position && title && artist) {
+        const cleanArtist = this.cleanArtistForSearch(artist);
         tracks.push({
           position: parseInt(position),
           title: title.toUpperCase(),
           artist: artist.toUpperCase(),
-          searchQuery: `track:"${title.toUpperCase()}" artist:"${artist.toUpperCase()}"`
+          searchQuery: `track:"${title.toUpperCase()}" artist:"${cleanArtist.toUpperCase()}"`
         });
       }
     });
